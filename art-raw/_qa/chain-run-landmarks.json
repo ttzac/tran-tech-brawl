@@ -1,0 +1,26 @@
+{
+  "landmarks": {
+    "run_1": [247, 705],
+    "run_2": [247, 710],
+    "run_3": [246, 690],
+    "run_4": [251, 685],
+    "run_5": [263, 675],
+    "run_6": [237, 650]
+  },
+  "sourceDimensions": [1254, 1254],
+  "headRanges": {
+    "run_1": [427, 674],
+    "run_2": [507, 754],
+    "run_3": [394, 640],
+    "run_4": [389, 640],
+    "run_5": [464, 727],
+    "run_6": [403, 640]
+  },
+  "notes": [
+    "Whole-figure scale and pelvic-center landmarks estimated visually in original 1254x1254 source pixels; allow a few pixels of measurement uncertainty.",
+    "run_3 regenerated once to correct trailing curl into forward-knee passing pose.",
+    "Katana remains in anatomical RIGHT hand in all six frames. run_6 swings weapon hand forward across waist; other frames carry it trailing rear.",
+    "Spools remain anatomical RIGHT hip, orange outer/teal inner; scabbard and printed trinkets remain LEFT hip. No cable-whip, tattoo, glasses, watch or baked effects.",
+    "Contact/down/passing phases are visually distinct. Precise opposite-leg occlusion and continuous loop playback still require root/in-game review."
+  ]
+}

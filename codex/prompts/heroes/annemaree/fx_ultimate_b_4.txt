@@ -1,0 +1,19 @@
+ART STYLE (the attached APPROVED-style-david-sheet.webp is the final look: match its cleanliness, pixel size, shading and outline EXACTLY; the other style image is only an early concept for mood):
+- CLEAN, HIGH-QUALITY 2D pixel art for an arcade brawler, matching the APPROVED STYLE reference (codex/refs/style/APPROVED-style-david-sheet.webp) EXACTLY: a clean, polished, less-pixelated look with fine pixel blocks, smooth tidy edges, soft readable cel shading, crisp outlines. NOT chunky or blocky, NOT noisy, NO blur, NO painterly smoothing, NO 3D render look, NO gradients (use clean 3-4 tone cel shading and a bright rim light).
+- Pixel size: fine and uniform, each visible pixel block about 4x4 px on the 1024x1024 canvas (a 256x256 logical grid). Keep the SAME pixel size in every image of every character so frames never mix pixel sizes. Clean lines, no stray single-pixel noise, no dithering clutter on faces.
+- Detail level of the approved reference: clean expressive faces (eyes, brows, glasses glints, beard texture), readable fabric folds and seams, gold/teal trim lines, metallic highlights on gear. Same arcade proportions: slightly enlarged head, hands and boots.
+- Dark navy outline #0B1026 (never pure black) around every shape, 1 pixel block thick, slightly thicker on the outer silhouette.
+- Shading: 3 tones + 1 highlight per material, cel style. Key light warm from the top-left (#FFC857), cool TEAL rim light from the back-right (#2EE6D6).
+- Vibrant but controlled palette (about 32 colours per character): TranTech navy #14213D / near-black polo #121B33, teal #19D3C5 and #2EE6D6, amber #FFA31A, warm gold #FFC857, electric blue #3EA6FF, LED green #4DFF88, cream #F6EAD2, skin tones with warm rosy mid-tones. Saturation about 15% higher than the concept image, never neon-garish.
+- Brand: the uniform is a dark navy-black polo/top with the TranTech logo patch on the left chest: a small wide RECTANGLE with a teal outline and a tiny white word-mark (do not try to write legible text, a few pixels suggesting letters is right).
+
+HERO CONTEXT: Anne-Maree "The Co-Boss". Weapon: a golden executive GAVEL with a teal glowing head, and a floating glowing "EXECUTIVE CLIPBOARD" shield that orbits her arm. FX colours: #FF6FB1 pink + #FFC857 gold + #2EE6D6 teal. Melee: "Order In The Court": a gavel smash with a gold shockwave and a floating "ORDER!" exclamation. Special: "Performance Review": a laughing toss of a fan of glowing review forms that fly as spinning paper projectiles with gold star ratings (5 stars) and tiny sparkles. Ultimate: "Board Meeting": a long boardroom table crashes down from above with a ring of glowing executive chairs; Anne-Maree slams the gavel and a gold shockwave flings everyone off the table.
+
+EFFECT OUTPUT RULES:
+1. Canvas exactly 1024x1024 (or the size stated), background ONE flat solid MAGENTA #FF00FF, nothing else in the background. The effect must contain NO magenta/hot pink pixels (use violet #9B5CFF or pink-orange #FF8A5C if you need pinks).
+2. ONE frame of the animation per image, centred on the canvas; the effect's origin point (where the swing/impact/projectile is anchored) is at the exact centre x=512, y=512 so the frames line up when stacked.
+3. The effect faces / travels to the RIGHT where it has direction.
+4. Same pixel-art style as the character sprites (fine uniform 4x4 px pixel blocks, clean smooth shapes, navy outline where a shape needs it, bright white-hot cores, no blur). No characters in effect images.
+5. Frames of one effect must keep the same scale, palette and origin, only the animation changes.
+
+THIS IMAGE: frame 4 of 6. ULTIMATE EFFECT, part B (the detonation): 6 frames of the main blast of "Board Meeting", huge and flashy, themed colours.

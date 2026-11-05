@@ -1,0 +1,31 @@
+ART STYLE (the attached APPROVED-style-david-sheet.webp is the final look: match its cleanliness, pixel size, shading and outline EXACTLY; the other style image is only an early concept for mood):
+- CLEAN, HIGH-QUALITY 2D pixel art for an arcade brawler, matching the APPROVED STYLE reference (codex/refs/style/APPROVED-style-david-sheet.webp) EXACTLY: a clean, polished, less-pixelated look with fine pixel blocks, smooth tidy edges, soft readable cel shading, crisp outlines. NOT chunky or blocky, NOT noisy, NO blur, NO painterly smoothing, NO 3D render look, NO gradients (use clean 3-4 tone cel shading and a bright rim light).
+- Pixel size: fine and uniform, each visible pixel block about 4x4 px on the 1024x1024 canvas (a 256x256 logical grid). Keep the SAME pixel size in every image of every character so frames never mix pixel sizes. Clean lines, no stray single-pixel noise, no dithering clutter on faces.
+- Detail level of the approved reference: clean expressive faces (eyes, brows, glasses glints, beard texture), readable fabric folds and seams, gold/teal trim lines, metallic highlights on gear. Same arcade proportions: slightly enlarged head, hands and boots.
+- Dark navy outline #0B1026 (never pure black) around every shape, 1 pixel block thick, slightly thicker on the outer silhouette.
+- Shading: 3 tones + 1 highlight per material, cel style. Key light warm from the top-left (#FFC857), cool TEAL rim light from the back-right (#2EE6D6).
+- Vibrant but controlled palette (about 32 colours per character): TranTech navy #14213D / near-black polo #121B33, teal #19D3C5 and #2EE6D6, amber #FFA31A, warm gold #FFC857, electric blue #3EA6FF, LED green #4DFF88, cream #F6EAD2, skin tones with warm rosy mid-tones. Saturation about 15% higher than the concept image, never neon-garish.
+- Brand: the uniform is a dark navy-black polo/top with the TranTech logo patch on the left chest: a small wide RECTANGLE with a teal outline and a tiny white word-mark (do not try to write legible text, a few pixels suggesting letters is right).
+
+CHARACTER: JARED, "The Greybeard" (Veteran / trap setter). A stylised arcade-hero caricature of a REAL TranTech staff member, so the face and body must be recognisably THEM, flattering and fun.
+REFERENCE PHOTO: attached as codex/refs/photos/jared.jpeg. Study it for face shape, hair, facial hair, glasses, skin tone, build and expression. Do not copy the photo's background or clothes literally; convert into the game style.
+BUILD: big, broad, grounded, older veteran, strong forearms, slightly enlarged head/hands/boots.
+LIKENESS (must be recognisable): LONG GREY-BROWN HAIR swept back and tied in a low PONYTAIL, grey at the temples. FULL THICK GREY-WHITE BEARD (bushy, long, with white streaks and dark patches at the moustache). Weathered tanned skin, laugh lines, big joyful open-mouth LAUGH showing teeth, deep warm brown eyes, strong brows. NO glasses. Tanned strong forearms.
+OUTFIT: TranTech navy polo with a light-blue inner collar and a thin light-blue seam on the side, logo patch on the left chest, rugged dark trousers, worn leather work boots with a small floppy-disk keychain, a belt with a tape measure and a cable tester, a worn utility vest over the polo.
+SIGNATURE WEAPON: a gnarled wooden staff topped with an old CRT monitor glowing amber, an ancient floppy disk as a throwing star.
+FX COLOURS: #FFA31A amber + #8FD3FF pale blue.
+PERSONALITY / SIGNATURE QUIRK (this is what makes them unique, show it in the design and every pose): Jared is a long-serving veteran of legacy systems: a big laughing greybeard with deep know-how of old technology.
+EXTRA DETAIL: a tiny floppy disk keychain dangles from the belt.
+
+SPRITE OUTPUT RULES (the image is imported by a script, so these are not optional):
+1. Canvas exactly 1024x1024, background ONE flat solid MAGENTA #FF00FF. Nothing else in the background: no floor, no cast shadow, no glow, no gradient, no border, no text, no labels, no pose number, no watermark. The character must contain NO magenta, hot pink or purple-pink pixels (the keying colour).
+2. ONE pose only. One character only. No turnaround, no collage, no second figure.
+3. The character FACES RIGHT (towards the right edge of the canvas).
+4. Scale: the standing/idle height is about 660 px tall (see per-character note) on this 1024 canvas: use the SAME scale in every frame of this character, never zoom per pose. Feet (soles) rest on the horizontal line y=960 whenever the pose is grounded; the body centre (the hips) sits on the vertical line x=512. In air poses keep the same centre and scale.
+5. Keep the whole figure and all weapons/hair fully inside the canvas with at least 40 px free on every side.
+6. Do not draw attack effects, trails, projectiles, impact bursts, motion lines, dust or shadows in the character image: those are separate images (fx_*). The only exceptions are the tiny sparkles/stars that the pose text explicitly asks for.
+7. Likeness, outfit, proportions, colours, tattoos, glasses, hair and logo patch must be IDENTICAL to the approved design sheet and to the previous frames. If a frame disagrees with the sheet, the frame is wrong: regenerate it.
+
+POSE TO DRAW (this single image only): HURT frame 1 of 2: hit from the front, head snapping back, eyes shut tight, body leaning backward.
+
+Move names for context: melee "Legacy Support", combo finisher "End Of Life", special "Dial-Up Handshake", ultimate "Y2K". Melee = "Legacy Support": a heavy staff swing with a CRT-glow trail and an old "beep" shockwave. Special = "Dial-Up Handshake": a spiralling sound-wave of "BEEP-BOOP-KSSHH" rings that expand outward from the staff and stun enemies, with tiny modem-LED icons. Ultimate = "Y2K": a screen-wide countdown "19 99" rolls to "20 00" and detonates with a huge amber shockwave and falling pixelated numbers.

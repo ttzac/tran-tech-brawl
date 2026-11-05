@@ -1,0 +1,63 @@
+{
+  "landmarks": {
+    "melee_1": [
+      289,
+      620
+    ],
+    "melee_2": [
+      278,
+      615
+    ],
+    "melee_3": [
+      270,
+      515
+    ],
+    "melee_4": [
+      247,
+      640
+    ],
+    "special_1": [
+      257,
+      640
+    ],
+    "special_2": [
+      280,
+      640
+    ],
+    "special_3": [
+      260,
+      645
+    ]
+  },
+  "sourceSizes": {
+    "melee_1": [
+      1254,
+      1254
+    ],
+    "melee_2": [
+      1254,
+      1254
+    ],
+    "melee_3": [
+      1254,
+      1254
+    ],
+    "melee_4": [
+      1254,
+      1254
+    ],
+    "special_1": [
+      1254,
+      1254
+    ],
+    "special_2": [
+      1254,
+      1254
+    ],
+    "special_3": [
+      1254,
+      1254
+    ]
+  },
+  "notes": "Hair-to-chin heights and pelvic center X estimated visually in source pixels. Whole-frame art remains unnormalized1254x1254; root handles final scaling/feet. Katana/right hand, spools/right hip, scabbard+trinkets/left hip consistent. No baked FX. Special3 settles katana toward low front guard. No animation playback test."
+}

@@ -1,0 +1,818 @@
+[
+  {
+    "name": "portrait_neutral",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "output": [
+      1024,
+      1024
+    ],
+    "mode": "canvas-resize"
+  },
+  {
+    "name": "icon_hud",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "output": [
+      1024,
+      1024
+    ],
+    "mode": "canvas-resize"
+  },
+  {
+    "name": "idle_1",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 391,
+      "top": 399,
+      "width": 433,
+      "height": 747
+    },
+    "sourceHead": 166,
+    "sourceHip": [
+      625,
+      null
+    ],
+    "scale": 0.856760374832664,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      312,
+      321,
+      371,
+      640
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "idle_2",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 389,
+      "top": 387,
+      "width": 435,
+      "height": 759
+    },
+    "sourceHead": 166,
+    "sourceHip": [
+      625,
+      null
+    ],
+    "scale": 0.856760374832664,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      310,
+      311,
+      373,
+      650
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "idle_3",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 390,
+      "top": 389,
+      "width": 449,
+      "height": 758
+    },
+    "sourceHead": 168,
+    "sourceHip": [
+      640,
+      null
+    ],
+    "scale": 0.8465608465608466,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      300,
+      319,
+      380,
+      642
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "idle_4",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 392,
+      "top": 395,
+      "width": 427,
+      "height": 752
+    },
+    "sourceHead": 166,
+    "sourceHip": [
+      625,
+      null
+    ],
+    "scale": 0.856760374832664,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      312,
+      317,
+      366,
+      644
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "run_1",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 190,
+      "top": 404,
+      "width": 719,
+      "height": 774
+    },
+    "sourceHead": 210,
+    "sourceHip": [
+      595,
+      null
+    ],
+    "scale": 0.6772486772486773,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      238,
+      437,
+      487,
+      524
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "run_2",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 269,
+      "top": 460,
+      "width": 662,
+      "height": 719
+    },
+    "sourceHead": 210,
+    "sourceHip": [
+      605,
+      null
+    ],
+    "scale": 0.6772486772486773,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      284,
+      474,
+      448,
+      487
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "run_3",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 318,
+      "top": 322,
+      "width": 567,
+      "height": 823
+    },
+    "sourceHead": 205,
+    "sourceHip": [
+      625,
+      null
+    ],
+    "scale": 0.6937669376693767,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      299,
+      390,
+      393,
+      571
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "run_4",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 249,
+      "top": 334,
+      "width": 692,
+      "height": 806
+    },
+    "sourceHead": 203,
+    "sourceHip": [
+      650,
+      null
+    ],
+    "scale": 0.7006020799124247,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      231,
+      396,
+      485,
+      565
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "run_5",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 263,
+      "top": 363,
+      "width": 664,
+      "height": 778
+    },
+    "sourceHead": 203,
+    "sourceHip": [
+      640,
+      null
+    ],
+    "scale": 0.7006020799124247,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      248,
+      416,
+      465,
+      545
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "run_6",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 358,
+      "top": 360,
+      "width": 611,
+      "height": 788
+    },
+    "sourceHead": 205,
+    "sourceHip": [
+      625,
+      null
+    ],
+    "scale": 0.6937669376693767,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      327,
+      414,
+      424,
+      547
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "jump_1",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 331,
+      "top": 199,
+      "width": 607,
+      "height": 811
+    },
+    "sourceHead": 185,
+    "sourceHip": [
+      610,
+      700
+    ],
+    "scale": 0.7687687687687688,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      298,
+      255,
+      467,
+      623
+    ],
+    "feet": null,
+    "hipTarget": [
+      512,
+      640
+    ],
+    "constrained": false
+  },
+  {
+    "name": "fall_1",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 321,
+      "top": 314,
+      "width": 628,
+      "height": 875
+    },
+    "sourceHead": 205,
+    "sourceHip": [
+      600,
+      855
+    ],
+    "scale": 0.6937669376693767,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      318,
+      265,
+      436,
+      607
+    ],
+    "feet": null,
+    "hipTarget": [
+      512,
+      640
+    ],
+    "constrained": false
+  },
+  {
+    "name": "melee_1",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 103,
+      "top": 498,
+      "width": 921,
+      "height": 669
+    },
+    "sourceHead": 215,
+    "sourceHip": [
+      640,
+      null
+    ],
+    "scale": 0.661498708010336,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      157,
+      518,
+      609,
+      443
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "melee_2",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 278,
+      "top": 319,
+      "width": 760,
+      "height": 846
+    },
+    "sourceHead": 210,
+    "sourceHip": [
+      620,
+      null
+    ],
+    "scale": 0.6772486772486773,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      280,
+      388,
+      515,
+      573
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "melee_3",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 154,
+      "top": 398,
+      "width": 1050,
+      "height": 770
+    },
+    "sourceHead": 205,
+    "sourceHip": [
+      525,
+      null
+    ],
+    "scale": 0.6937669376693767,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      255,
+      427,
+      728,
+      534
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "melee_4",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 376,
+      "top": 397,
+      "width": 475,
+      "height": 749
+    },
+    "sourceHead": 170,
+    "sourceHip": [
+      630,
+      null
+    ],
+    "scale": 0.8366013071895425,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      300,
+      334,
+      397,
+      627
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "special_1",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 231,
+      "top": 399,
+      "width": 654,
+      "height": 753
+    },
+    "sourceHead": 200,
+    "sourceHip": [
+      615,
+      null
+    ],
+    "scale": 0.7111111111111111,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      239,
+      426,
+      465,
+      535
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "special_2",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 229,
+      "top": 395,
+      "width": 867,
+      "height": 756
+    },
+    "sourceHead": 200,
+    "sourceHip": [
+      615,
+      null
+    ],
+    "scale": 0.7111111111111111,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      238,
+      423,
+      617,
+      538
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "special_3",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 263,
+      "top": 388,
+      "width": 792,
+      "height": 762
+    },
+    "sourceHead": 190,
+    "sourceHip": [
+      615,
+      null
+    ],
+    "scale": 0.7485380116959065,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      249,
+      391,
+      593,
+      570
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "hurt_1",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 314,
+      "top": 386,
+      "width": 512,
+      "height": 760
+    },
+    "sourceHead": 190,
+    "sourceHip": [
+      640,
+      null
+    ],
+    "scale": 0.7485380116959065,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      268,
+      392,
+      383,
+      569
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "hurt_2",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 332,
+      "top": 387,
+      "width": 527,
+      "height": 758
+    },
+    "sourceHead": 180,
+    "sourceHip": [
+      645,
+      null
+    ],
+    "scale": 0.7901234567901235,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      265,
+      362,
+      416,
+      599
+    ],
+    "feet": 960,
+    "hipTarget": [
+      512,
+      null
+    ],
+    "constrained": false
+  },
+  {
+    "name": "launch_1",
+    "sourceSize": [
+      1254,
+      1254
+    ],
+    "sourceBox": {
+      "left": 75,
+      "top": 307,
+      "width": 1051,
+      "height": 802
+    },
+    "sourceHead": 200,
+    "sourceHip": [
+      615,
+      725
+    ],
+    "scale": 0.7111111111111111,
+    "headPixels": 142.22222222222223,
+    "output": [
+      1024,
+      1024
+    ],
+    "box": [
+      128,
+      343,
+      747,
+      570
+    ],
+    "feet": null,
+    "hipTarget": [
+      512,
+      640
+    ],
+    "constrained": false
+  }
+]

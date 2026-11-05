@@ -1,0 +1,31 @@
+ART STYLE (the attached APPROVED-style-david-sheet.webp is the final look: match its cleanliness, pixel size, shading and outline EXACTLY; the other style image is only an early concept for mood):
+- CLEAN, HIGH-QUALITY 2D pixel art for an arcade brawler, matching the APPROVED STYLE reference (codex/refs/style/APPROVED-style-david-sheet.webp) EXACTLY: a clean, polished, less-pixelated look with fine pixel blocks, smooth tidy edges, soft readable cel shading, crisp outlines. NOT chunky or blocky, NOT noisy, NO blur, NO painterly smoothing, NO 3D render look, NO gradients (use clean 3-4 tone cel shading and a bright rim light).
+- Pixel size: fine and uniform, each visible pixel block about 4x4 px on the 1024x1024 canvas (a 256x256 logical grid). Keep the SAME pixel size in every image of every character so frames never mix pixel sizes. Clean lines, no stray single-pixel noise, no dithering clutter on faces.
+- Detail level of the approved reference: clean expressive faces (eyes, brows, glasses glints, beard texture), readable fabric folds and seams, gold/teal trim lines, metallic highlights on gear. Same arcade proportions: slightly enlarged head, hands and boots.
+- Dark navy outline #0B1026 (never pure black) around every shape, 1 pixel block thick, slightly thicker on the outer silhouette.
+- Shading: 3 tones + 1 highlight per material, cel style. Key light warm from the top-left (#FFC857), cool TEAL rim light from the back-right (#2EE6D6).
+- Vibrant but controlled palette (about 32 colours per character): TranTech navy #14213D / near-black polo #121B33, teal #19D3C5 and #2EE6D6, amber #FFA31A, warm gold #FFC857, electric blue #3EA6FF, LED green #4DFF88, cream #F6EAD2, skin tones with warm rosy mid-tones. Saturation about 15% higher than the concept image, never neon-garish.
+- Brand: the uniform is a dark navy-black polo/top with the TranTech logo patch on the left chest: a small wide RECTANGLE with a teal outline and a tiny white word-mark (do not try to write legible text, a few pixels suggesting letters is right).
+
+CHARACTER: DAVID, "The Big Boss" (Commander / tank (owner, with Anne-Maree)). A stylised arcade-hero caricature of a REAL TranTech staff member, so the face and body must be recognisably THEM, flattering and fun.
+REFERENCE PHOTO: attached as codex/refs/photos/david.jpeg. Study it for face shape, hair, facial hair, glasses, skin tone, build and expression. Do not copy the photo's background or clothes literally; convert into the game style.
+BUILD: sturdy, grounded leader build, slightly enlarged head/hands/boots.
+LIKENESS (must be recognisable): SHORT DARK-BROWN HAIR cropped close with grey at the temples and sides, a receding hairline / high forehead, neat and tidy. THICK BLACK RECTANGULAR GLASSES. FULL SALT-AND-PEPPER BEARD, medium length: grey-white on the chin and jaw, darker brown on the cheeks and moustache, neatly trimmed. Fair-to-tanned skin with warm cheeks, brown eyes, calm steady expression with a small warm closed-mouth smile, a few laugh lines. NO tattoos shown. BUILD: broad shoulders, solid and strong, the sturdy anchor of the crew.
+OUTFIT: TranTech navy polo with the teal-outlined logo patch on the left chest, a tailored dark executive jacket with gold trim worn open, dark trousers, polished-but-sturdy boots, a small gold "BOSS" pin.
+SIGNATURE WEAPON: a heavy golden-trimmed CLIPBOARD-BRIEFCASE shield with a glowing TranTech teal badge, and a golden "APPROVED" stamp that doubles as a hammer.
+FX COLOURS: #FFC857 gold + #2EE6D6 teal.
+PERSONALITY / SIGNATURE QUIRK (this is what makes them unique, show it in the design and every pose): David is THE BOSS (owner of TranTech) and Anne-Maree's husband. Strong, steady leader with a big heart who built the whole crew. Authority with warmth.
+EXTRA DETAIL: a gold pin; a briefcase with a "TRANTECH" label.
+
+SPRITE OUTPUT RULES (the image is imported by a script, so these are not optional):
+1. Canvas exactly 1024x1024, background ONE flat solid MAGENTA #FF00FF. Nothing else in the background: no floor, no cast shadow, no glow, no gradient, no border, no text, no labels, no pose number, no watermark. The character must contain NO magenta, hot pink or purple-pink pixels (the keying colour).
+2. ONE pose only. One character only. No turnaround, no collage, no second figure.
+3. The character FACES RIGHT (towards the right edge of the canvas).
+4. Scale: the standing/idle height is about 640 px tall (see per-character note) on this 1024 canvas: use the SAME scale in every frame of this character, never zoom per pose. Feet (soles) rest on the horizontal line y=960 whenever the pose is grounded; the body centre (the hips) sits on the vertical line x=512. In air poses keep the same centre and scale.
+5. Keep the whole figure and all weapons/hair fully inside the canvas with at least 40 px free on every side.
+6. Do not draw attack effects, trails, projectiles, impact bursts, motion lines, dust or shadows in the character image: those are separate images (fx_*). The only exceptions are the tiny sparkles/stars that the pose text explicitly asks for.
+7. Likeness, outfit, proportions, colours, tattoos, glasses, hair and logo patch must be IDENTICAL to the approved design sheet and to the previous frames. If a frame disagrees with the sheet, the frame is wrong: regenerate it.
+
+POSE TO DRAW (this single image only): MELEE frame 1 of 4 "Signed Off" ANTICIPATION: crouch low, a heavy golden-trimmed CLIPBOARD-BRIEFCASE shield with a glowing TranTech teal badge, and a golden "APPROVED" stamp that doubles as a hammer pulled back behind the body, eyes locked on the target.
+
+Move names for context: melee "Signed Off", combo finisher "Bonus Round", special "Company Restructure", ultimate "Company Retreat". Melee = "Signed Off": a heavy briefcase smash with a gold shockwave and an "APPROVED" flash. Special = "Company Restructure": throws the briefcase like a boomerang; it flies out, returns, and opens to scatter glowing gold org-chart cards as spinning projectiles. Ultimate = "Company Retreat": a TranTech bus/van of the whole crew bursts through the screen blasting gold confetti, balloons and a huge teal shockwave.
