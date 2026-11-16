@@ -1,0 +1,1 @@
+See codex/prompts/heroes/lachlan/fx_special_hit_4.txt

@@ -1,0 +1,1 @@
+See codex/prompts/heroes/jared/portrait_angry.txt

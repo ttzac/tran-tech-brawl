@@ -1,0 +1,1 @@
+See codex/prompts/heroes/lachlan/respawn_2.txt

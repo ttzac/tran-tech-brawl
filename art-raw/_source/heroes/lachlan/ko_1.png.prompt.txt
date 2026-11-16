@@ -1,0 +1,1 @@
+See codex/prompts/heroes/lachlan/ko_1.txt
