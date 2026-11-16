@@ -1,0 +1,1 @@
+See codex/prompts/heroes/jared/fx_special_hit_1.txt

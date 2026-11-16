@@ -1,0 +1,1 @@
+See codex/prompts/heroes/jared/fx_melee_trail_1.txt

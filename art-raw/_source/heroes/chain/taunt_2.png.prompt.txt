@@ -1,0 +1,1 @@
+See codex/prompts/heroes/chain/taunt_2.txt
