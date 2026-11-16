@@ -1,0 +1,11 @@
+const fs=require('fs'),path=require('path'),sharp=require('sharp'),root=path.resolve(__dirname,'../..');
+const jobs=[['melee2_2','body'],['special_4','body'],['special_5','body'],['ultimate_1','body'],['ultimate_4','body'],['respawn_2','body'],['fx_melee_trail_2','fx'],['fx_melee_hit_2','fx'],['fx_melee_hit_3','fx'],['fx_melee_hit_4','fx']];
+(async()=>{for(const [name,kind] of jobs){const src=path.join(__dirname,name+'-fix.png'),dst=path.join(root,'art-raw/heroes/cameron',name+'.png'),backup=path.join(root,'art-raw/_source/_attempts/heroes/cameron',name+'-before-fix.png');fs.mkdirSync(path.dirname(backup),{recursive:true});if(fs.existsSync(dst)&&!fs.existsSync(backup))fs.copyFileSync(dst,backup);
+const {data,info}=await sharp(src).ensureAlpha().raw().toBuffer({resolveWithObject:true});let x0=info.width,y0=info.height,x1=-1,y1=-1;
+for(let y=0;y<info.height;y++)for(let x=0;x<info.width;x++){const i=(y*info.width+x)*4,r=data[i],g=data[i+1],b=data[i+2];if(r>200&&b>160&&g<120){data[i]=255;data[i+1]=0;data[i+2]=255;data[i+3]=0;}else if(data[i+3]>0&&(Math.abs(r-255)>55||Math.abs(g)>55||Math.abs(b-255)>55)){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y)}}
+if(x1<0)throw new Error('empty '+name);const bw=x1-x0+1,bh=y1-y0+1,limitW=kind==='fx'?900:944,limitH=kind==='fx'?900:640;let s=Math.min(limitW/bw,limitH/bh);if(kind==='body')s=Math.max(s,Math.min(limitW/bw,limitH/bh));const w=Math.max(1,Math.round(bw*s)),h=Math.max(1,Math.round(bh*s));
+const crop=await sharp(data,{raw:{width:info.width,height:info.height,channels:4}}).extract({left:x0,top:y0,width:bw,height:bh}).resize(w,h,{kernel:'nearest'}).png().toBuffer();
+const left=Math.round((1024-w)/2),top=kind==='body'?960-h:Math.round((1024-h)/2);
+await sharp({create:{width:1024,height:1024,channels:3,background:'#ff00ff'}}).composite([{input:crop,left,top}]).png().toFile(dst);
+const orig=path.join(root,'art-raw/_source/heroes/cameron',name+'.png');fs.mkdirSync(path.dirname(orig),{recursive:true});fs.copyFileSync(src,orig);fs.writeFileSync(orig+'.prompt.txt','Corrected candidate from '+name+'; see codex/prompts/heroes/cameron/'+name+'.txt');console.log(name+' normalized')}
+})().catch(e=>{console.error(e);process.exit(1)});

@@ -1,0 +1,21 @@
+const fs=require('node:fs'),path=require('node:path'),sharp=require('sharp');
+const root=path.resolve(__dirname,'../..');
+(async()=>{const records=JSON.parse(fs.readFileSync(path.join(__dirname,'aiden-batch-results.json')));for(const m of records){
+ const out=path.join(root,m.out), src=path.join(root,m.out.replace('art-raw/','art-raw/_source/'));
+ fs.mkdirSync(path.dirname(out),{recursive:true});fs.mkdirSync(path.dirname(src),{recursive:true});fs.copyFileSync(m.source,src);fs.writeFileSync(src+'.prompt.txt',m.generationPrompt||m.text);
+ if(m.name.startsWith('sheet_')){const w=m.name==='sheet_turnaround'?2048:1536;await sharp(src).resize(w,1024,{kernel:'nearest'}).png().toFile(out);}
+ else if(m.landmarks){
+  const {data,info}=await sharp(src).ensureAlpha().raw().toBuffer({resolveWithObject:true});let x0=info.width,y0=info.height,x1=-1,y1=-1;
+  for(let y=0;y<info.height;y++)for(let x=0;x<info.width;x++){const i=(y*info.width+x)*4;if(data[i]>200&&data[i+1]<55&&data[i+2]>200){data[i]=255;data[i+1]=0;data[i+2]=255;data[i+3]=0;}else if(data[i+3]){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);}}
+  const [head,hipX,hipY]=m.landmarks;const bw=x1-x0+1,bh=y1-y0+1;
+  let s=m.targetHead/head;s=Math.min(s,472/Math.max(1,hipX-x0),472/Math.max(1,x1-hipX),920/bh);
+  const w=Math.round(bw*s),h=Math.round(bh*s),left=Math.round(512-(hipX-x0)*s),top=hipY===undefined?961-h:Math.max(40,Math.min(984-h,Math.round(640-(hipY-y0)*s)));
+  const sprite=await sharp(data,{raw:{width:info.width,height:info.height,channels:4}}).extract({left:x0,top:y0,width:bw,height:bh}).resize(w,h,{kernel:'nearest'}).png().toBuffer();
+  await sharp({create:{width:1024,height:1024,channels:3,background:'#ff00ff'}}).composite([{input:sprite,left,top}]).png().toFile(out);
+ }else if(m.kind==='fx'){const {data,info}=await sharp(src).ensureAlpha().raw().toBuffer({resolveWithObject:true});for(let i=0;i<data.length;i+=4){if(data[i]>200&&data[i+1]<120&&data[i+2]>160){data[i]=255;data[i+1]=0;data[i+2]=255;data[i+3]=255;}}await sharp(data,{raw:{width:info.width,height:info.height,channels:4}}).resize(1024,1024,{kernel:'nearest'}).flatten({background:'#ff00ff'}).png().toFile(out);
+ }else if(/^(portrait|icon)/.test(m.name)){const png=await sharp(src).resize(944,944,{kernel:'nearest',fit:'contain',background:'#ff00ff'}).png().toBuffer();await sharp({create:{width:1024,height:1024,channels:3,background:'#ff00ff'}}).composite([{input:png,left:40,top:40}]).png().toFile(out);
+ }else{const match=m.text.match(/OUTPUT:\s*(\d+)x(\d+)/i);let w=match?+match[1]:1024,h=match?+match[2]:1024;await sharp(src).resize(w,h,{kernel:'nearest'}).png().toFile(out);}
+ fs.appendFileSync(path.join(__dirname,'autopilot-normalization.jsonl'),JSON.stringify({id:m.id,out:m.out,source:m.source,landmarks:m.landmarks,targetHead:m.targetHead,at:new Date().toISOString()})+'\n');
+ console.log(m.id+' saved');
+}})().catch(e=>{console.error(e);process.exit(1)});
+
