@@ -1,0 +1,3 @@
+const sharp=require('sharp'),path=require('node:path');
+const root=path.resolve(__dirname,'../..');
+(async()=>{for(let i=1;i<=6;i++){const name=`fx_ultimate_b_${i}`;const source=path.join(root,'art-raw/_source/heroes/david',`${name}.png`);const output=path.join(root,'art-raw/heroes/david',`${name}.png`);const fitted=await sharp(source).resize(880,880,{fit:'inside',withoutEnlargement:true,kernel:'nearest'}).png().toBuffer();await sharp({create:{width:1024,height:1024,channels:3,background:'#ff00ff'}}).composite([{input:fitted,gravity:'centre'}]).png().toFile(output);console.log(`${name} inset`);}})().catch(e=>{console.error(e);process.exit(1)});
