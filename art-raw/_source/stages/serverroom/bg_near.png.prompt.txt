@@ -1,0 +1,1 @@
+See codex/prompts/stages/serverroom/bg_near.txt
