@@ -1,0 +1,6 @@
+const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process');
+const root=path.resolve(__dirname,'../..'),generated=path.join(process.env.USERPROFILE,'.codex','generated_images','01a1d2a5-59c9-7bd1-92c0-77976505e553');
+const files=['exec-e73e6419-c85c-43d1-8620-338c29560302.png','exec-9f85ac4a-02e9-4329-92e7-a72ac9940658.png','exec-99b42126-9bb3-441c-9b51-3d960c19897a.png','exec-a783d985-1de8-476b-8577-a344da9bd765.png','exec-7ac52292-27ef-4fd0-9d51-1d688aad3fa5.png'];
+const raw=cp.execFileSync(process.execPath,['art-raw/_qa/autopilot-load.cjs'],{cwd:root,encoding:'utf8',maxBuffer:30e6});const batch=JSON.parse(raw.slice(raw.indexOf('{'))).batch;const selected=[...batch.slice(0,3),...batch.slice(7,9)];const records=JSON.parse(fs.readFileSync(path.join(__dirname,'bec-batch-results.json')));
+for(let i=0;i<selected.length;i++){const m=selected[i];const candidate=path.join(__dirname,`${m.id.replace('/','-')}-candidate.png`);fs.copyFileSync(path.join(generated,files[i]),candidate);records.push({id:m.id,out:m.out,source:candidate,name:m.id.split('/')[1],text:m.text,generationPrompt:m.text,...(m.id.includes('/fx_')?{kind:'fx'}:{landmarks:[240,600],targetHead:145})});}
+fs.writeFileSync(path.join(__dirname,'bec-batch-results.json'),JSON.stringify(records,null,2));console.log('Recorded valid images: '+selected.map(x=>x.id).join(', '));
