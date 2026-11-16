@@ -1,0 +1,1 @@
+See codex/prompts/heroes/ryan/ko_1.txt

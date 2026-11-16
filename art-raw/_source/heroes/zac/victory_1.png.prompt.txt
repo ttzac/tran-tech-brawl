@@ -1,0 +1,1 @@
+See codex/prompts/heroes/zac/victory_1.txt

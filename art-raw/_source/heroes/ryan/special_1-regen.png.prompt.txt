@@ -1,0 +1,1 @@
+Regenerated from codex/prompts/heroes/ryan/special_1.txt with Ryan photo, approved style, turnaround, idle_1 and special_2 references; explicitly restricted power accents to teal/gold.
