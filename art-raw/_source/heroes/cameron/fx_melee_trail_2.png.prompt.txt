@@ -1,0 +1,1 @@
+Corrected candidate from fx_melee_trail_2; see codex/prompts/heroes/cameron/fx_melee_trail_2.txt

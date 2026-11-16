@@ -1,0 +1,1 @@
+Corrected candidate from ultimate_1; see codex/prompts/heroes/cameron/ultimate_1.txt

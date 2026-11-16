@@ -1,0 +1,1 @@
+Corrected candidate from respawn_2; see codex/prompts/heroes/cameron/respawn_2.txt

@@ -1,0 +1,1 @@
+Corrected candidate from special_4; see codex/prompts/heroes/cameron/special_4.txt
