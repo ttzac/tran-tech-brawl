@@ -1,0 +1,1 @@
+See codex/prompts/fx/global/fx_ko_star_5.txt

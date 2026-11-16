@@ -1,0 +1,1 @@
+Regenerated from codex/prompts/bosses/altwave/idle_2.txt; explicit 50px safe margin, approved style, turnaround and idle_1 references.

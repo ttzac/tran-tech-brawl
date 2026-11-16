@@ -1,0 +1,1 @@
+See codex/prompts/fx/global/fx_pickup_glow_4.txt

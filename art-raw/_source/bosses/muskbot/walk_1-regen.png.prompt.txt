@@ -1,0 +1,1 @@
+Regenerated from codex/prompts/bosses/muskbot/walk_1.txt; explicitly no cast shadow/exhaust; same size/pose from approved model.
