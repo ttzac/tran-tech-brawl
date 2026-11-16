@@ -1,5 +1,5 @@
 import type { Bot } from '../entities/Bot';
-import type { Fighter } from '../entities/Fighter';
+import { ULT_MAX, type Fighter } from '../entities/Fighter';
 import type { StageDef } from '../data/types';
 
 export type BotState = 'approach' | 'attack' | 'dodge' | 'recover';
@@ -51,12 +51,12 @@ export const STATES: Record<BotState, StateFn> = {
     if (nudge !== 0 && dist > r * 0.5) i.dir = nudge;
     s.facing = face;
 
-    if (dy < -70 && s.grounded && Math.random() < 0.5) i.jump = true; // target is above
+    if (dy < -70 && s.grounded && s.world.rng.next() < 0.5) i.jump = true; // target is above
     if (dy > 90 && dist < 140) i.drop = true; // target is on a lower platform
 
-    if (threat !== 0 && Math.random() < s.skill.dodgeChance) return 'dodge';
+    if (threat !== 0 && s.world.rng.next() < s.skill.dodgeChance) return 'dodge';
 
-    if (s.specialCd <= 0 && dist > 200 && dist < 700 && Math.abs(dy) < 60 && Math.random() < s.skill.specialChance) {
+    if (s.specialCd <= 0 && dist > 200 && dist < 700 && Math.abs(dy) < 60 && s.world.rng.next() < s.skill.specialChance) {
       i.special = true;
     }
     if (dist < r && Math.abs(dy) < s.body.height * 1.3) return 'attack';
@@ -65,9 +65,10 @@ export const STATES: Record<BotState, StateFn> = {
   attack({ self: s, target: t }) {
     if (!t) return 'approach';
     const i = s.intent;
-    const roll = Math.random();
+    const roll = s.world.rng.next();
     s.facing = t.x > s.x ? 1 : -1;
     i.dir = 0;
+    if (s.team === 'hero' && s.ult >= ULT_MAX && !s.isBoss) i.ultimate = true; // meter full and a foe in reach: let rip
     if (roll < 0.12 && s.specialCd <= 0) i.special = true; // point-blank shot
     else i.attack = true;
     if (!s.isBoss) {
@@ -79,7 +80,7 @@ export const STATES: Record<BotState, StateFn> = {
 
   // Shots travel horizontally, so the dodge is a hop (plus, usually, a step toward the shooter to close in).
   dodge({ self: s, threat }) {
-    s.intent.dir = threat !== 0 && Math.random() < 0.6 ? ((-threat) as 1 | -1) : 0;
+    s.intent.dir = threat !== 0 && s.world.rng.next() < 0.6 ? ((-threat) as 1 | -1) : 0;
     if (s.jumpsLeft > 0) s.intent.jump = true;
     return 'approach';
   },
@@ -93,7 +94,8 @@ export const STATES: Record<BotState, StateFn> = {
     i.dir = under ? (s.x < cx ? -1 : 1) : s.x < cx ? 1 : -1;
     s.facing = i.dir;
     // all jumps give the same height, so use them as soon as we are falling; not while still under the slab
-    if (s.body.velocity.y > 0 && s.jumpsLeft > 0 && (!under || s.x < g.left || s.x > g.right)) i.jump = true;
+    // ...unless a ledge is about to be in reach: then keep falling toward it and grab it (the ledge refills the jumps)
+    if (s.body.vy > 0 && s.jumpsLeft > 0 && (!under || s.x < g.left || s.x > g.right) && !s.ledgeAlmostInReach) i.jump = true;
     if (s.grounded) return 'approach';
   },
 };

@@ -1,12 +1,16 @@
 import Phaser from 'phaser';
+import { fitUi } from '../ui/hires';
 import type { Fighter } from '../entities/Fighter';
 import { HUD } from '../ui/HUD';
 import { Sfx } from '../systems/Sfx';
+import { leaveNet } from '../net/session';
 
 export interface HUDData {
+  /** online match: the pause menu must not freeze the fight (other players are still playing) */
+  online?: boolean;
   player: Fighter;
   boss: Fighter;
-  stats: () => { minions: number; wave: number; allies: number };
+  stats: () => { minions: number; wave: number; allies: number; info?: string };
 }
 
 /** Registry key where HUDScene leaves fight stats for ResultScene: { timeMs, kos }. */
@@ -27,13 +31,16 @@ export class HUDScene extends Phaser.Scene {
   private timeMs = 0;
   private kos = 0;
   private muteTxt!: Phaser.GameObjects.Text;
+  private online = false;
 
   constructor() {
     super('HUD');
   }
 
   create(data: HUDData): void {
+    fitUi(this);
     this.stats = data.stats;
+    this.online = !!data.online;
     this.paused = false;
     this.overlay = [];
     this.timeMs = 0;
@@ -48,6 +55,9 @@ export class HUDScene extends Phaser.Scene {
       this.kos++;
     };
     fight.events.on('sfx:ko', onKo);
+    // announcer: FightScene says what to shout, we draw it
+    const onBanner = (text: string, color: string) => this.hud.banner(text, color);
+    fight.events.on('hud:banner', onBanner);
 
     this.muteTxt = this.add
       .text(944, 520, '', { fontFamily: 'Consolas, monospace', fontSize: '13px', color: '#f87171' })
@@ -71,6 +81,7 @@ export class HUDScene extends Phaser.Scene {
       this.unbind?.();
       this.unbind = null;
       fight.events.off('sfx:ko', onKo);
+      fight.events.off('hud:banner', onBanner);
       window.removeEventListener('ttb:mute', onMute);
       this.registry.set(FIGHT_STATS_KEY, { timeMs: this.timeMs, kos: this.kos });
     });
@@ -81,13 +92,13 @@ export class HUDScene extends Phaser.Scene {
     this.timeMs += delta;
     if (this.sys.game.getFrame() % 30 === 0) this.registry.set(FIGHT_STATS_KEY, { timeMs: this.timeMs, kos: this.kos });
     const s = this.stats();
-    this.hud.update(s.minions, s.wave, s.allies);
+    this.hud.update(s.minions, s.wave, s.allies, s.info);
   }
 
   private pause(): void {
     if (!this.scene.isActive('Fight')) return;
     this.paused = true;
-    this.scene.pause('Fight');
+    if (!this.online) this.scene.pause('Fight');
     this.registry.set(FIGHT_STATS_KEY, { timeMs: this.timeMs, kos: this.kos });
     Sfx.play('select');
     const dim = this.add.rectangle(480, 270, 960, 540, 0x000000, 0.6).setDepth(100);
@@ -130,11 +141,12 @@ export class HUDScene extends Phaser.Scene {
     this.overlay.forEach((o) => o.destroy());
     this.overlay = [];
     this.options = [];
-    this.scene.resume('Fight');
+    if (!this.online) this.scene.resume('Fight');
   }
 
   private quit(): void {
     this.registry.set(FIGHT_STATS_KEY, { timeMs: this.timeMs, kos: this.kos });
+    if (this.online) leaveNet();
     this.scene.stop('Fight');
     this.scene.start('Menu');
   }

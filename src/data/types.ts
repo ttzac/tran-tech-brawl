@@ -50,7 +50,7 @@ export interface WaveDef {
 }
 
 export interface BossPattern {
-  kind: 'barrage' | 'charge';
+  kind: 'barrage' | 'charge' | 'summon' | 'quake';
   every: number; // ms between uses
   duration: number; // ms the pattern lasts
 }
@@ -81,4 +81,9 @@ export interface StageDef {
   ground: { left: number; right: number; top: number };
   /** optional art: texture names from STAGE_IMAGES */
   art?: { solid: string; soft: string; backdrop: string[] }; // backdrop layers, bottom to top
+  /** procedural stages: theme id (see procgen.ts) and fallback platform colours when there is no art */
+  theme?: string;
+  tint?: { solid: number; soft: number; edge: number };
 }
+
+export type GameMode = 'boss' | 'brawl' | 'dungeon';

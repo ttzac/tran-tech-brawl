@@ -7,14 +7,14 @@ ART STYLE (the attached APPROVED-style-david-sheet.webp is the final look: match
 - Vibrant but controlled palette (about 32 colours per character): TranTech navy #14213D / near-black polo #121B33, teal #19D3C5 and #2EE6D6, amber #FFA31A, warm gold #FFC857, electric blue #3EA6FF, LED green #4DFF88, cream #F6EAD2, skin tones with warm rosy mid-tones. Saturation about 15% higher than the concept image, never neon-garish.
 - Brand: the uniform is a dark navy-black polo/top with the TranTech logo patch on the left chest: a small wide RECTANGLE with a teal outline and a tiny white word-mark (do not try to write legible text, a few pixels suggesting letters is right).
 
-CHARACTER: JARED, "The Greybeard" (Veteran / trap setter). A stylised arcade-hero caricature of a REAL TranTech staff member, so the face and body must be recognisably THEM, flattering and fun.
+CHARACTER: JARED, "The Greybeard" (Veteran onsite tech / disc golfer (the main onsite guy)). A stylised arcade-hero caricature of a REAL TranTech staff member, so the face and body must be recognisably THEM, flattering and fun.
 REFERENCE PHOTO: attached as codex/refs/photos/jared.jpeg. Study it for face shape, hair, facial hair, glasses, skin tone, build and expression. Do not copy the photo's background or clothes literally; convert into the game style.
 BUILD: big, broad, grounded, older veteran, strong forearms, slightly enlarged head/hands/boots.
 LIKENESS (must be recognisable): LONG GREY-BROWN HAIR swept back and tied in a low PONYTAIL, grey at the temples. FULL THICK GREY-WHITE BEARD (bushy, long, with white streaks and dark patches at the moustache). Weathered tanned skin, laugh lines, big joyful open-mouth LAUGH showing teeth, deep warm brown eyes, strong brows. NO glasses. Tanned strong forearms.
-OUTFIT: TranTech navy polo with a light-blue inner collar and a thin light-blue seam on the side, logo patch on the left chest, rugged dark trousers, worn leather work boots with a small floppy-disk keychain, a belt with a tape measure and a cable tester, a worn utility vest over the polo.
-SIGNATURE WEAPON: a gnarled wooden staff topped with an old CRT monitor glowing amber, an ancient floppy disk as a throwing star.
+OUTFIT: TranTech navy polo with a light-blue inner collar and a thin light-blue seam on the side, logo patch on the left chest, rugged dark trousers, worn leather work boots with a small floppy-disk keychain, a belt with a tape measure and a cable tester, a worn utility vest over the polo full of onsite technician tools, a worn DISC GOLF BAG on a single strap over the LEFT shoulder (the same shoulder in front, side and back views) hanging at the right hip.
+SIGNATURE WEAPON: DISC GOLF is his MAIN WEAPON: a bright orange disc golf driver held in the right hand and thrown like a weapon, more discs in the disc golf bag. He keeps all his onsite technician tools on the vest and belt. No staff, no CRT monitor..
 FX COLOURS: #FFA31A amber + #8FD3FF pale blue.
-PERSONALITY / SIGNATURE QUIRK (this is what makes them unique, show it in the design and every pose): Jared is a long-serving veteran of legacy systems: a big laughing greybeard with deep know-how of old technology.
+PERSONALITY / SIGNATURE QUIRK (this is what makes them unique, show it in the design and every pose): Jared is TranTech's main onsite technician and a long-serving veteran of legacy systems: a big laughing greybeard and a keen disc golfer.
 EXTRA DETAIL: a tiny floppy disk keychain dangles from the belt.
 
 SPRITE OUTPUT RULES (the image is imported by a script, so these are not optional):
@@ -28,4 +28,4 @@ SPRITE OUTPUT RULES (the image is imported by a script, so these are not optiona
 
 POSE TO DRAW (this single image only): COMBO FINISHER frame 1 of 4 "End Of Life" ANTICIPATION: pulls the weapon back low, planting the feet.
 
-Move names for context: melee "Legacy Support", combo finisher "End Of Life", special "Dial-Up Handshake", ultimate "Y2K". Melee = "Legacy Support": a heavy staff swing with a CRT-glow trail and an old "beep" shockwave. Special = "Dial-Up Handshake": a spiralling sound-wave of "BEEP-BOOP-KSSHH" rings that expand outward from the staff and stun enemies, with tiny modem-LED icons. Ultimate = "Y2K": a screen-wide countdown "19 99" rolls to "20 00" and detonates with a huge amber shockwave and falling pixelated numbers.
+Move names for context: melee "Legacy Support", combo finisher "End Of Life", special "Dial-Up Handshake", ultimate "Y2K". Melee = "Legacy Support": a hard backhand swing with the disc held like a blade, amber arc trail and an old "beep" shockwave. Special = "Dial-Up Handshake": throws a glowing disc golf driver on a curving flight path, trailing spiralling "BEEP-BOOP-KSSHH" rings and tiny modem-LED icons. Ultimate = "Y2K": a screen-wide countdown "19 99" rolls to "20 00" and detonates with a huge amber shockwave and falling pixelated numbers.

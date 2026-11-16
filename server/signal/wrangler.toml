@@ -1,0 +1,18 @@
+# Cloudflare Worker for multiplayer signalling. Deploy from this folder: npx wrangler deploy
+name = "ttb-signal"
+main = "worker.ts"
+compatibility_date = "2026-10-01"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
+
+[vars]
+# Comma-separated list of sites allowed to connect (your game's URL). Empty = anyone.
+ALLOWED_ORIGINS = "https://tran-tech-brawl.vercel.app,http://localhost:5173"
+
+# Secrets (not in this file): npx wrangler secret put TURN_KEY_ID / TURN_KEY_API_TOKEN

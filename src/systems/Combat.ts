@@ -1,10 +1,9 @@
-import Phaser from 'phaser';
 import type { Fighter } from '../entities/Fighter';
 import type { MoveDef, ProjectileDef } from '../data/types';
+import type { World } from '../sim/World';
 
-/** A live projectile. x / y / vx mirror the sprite (refreshed every frame) so AI code can read them cheaply. */
+/** A live projectile: plain data, moved by World.step. x / y are the centre. */
 export interface Shot {
-  sprite: Phaser.Physics.Arcade.Sprite;
   owner: Fighter;
   move: ProjectileDef;
   life: number;
@@ -12,9 +11,11 @@ export interface Shot {
   x: number;
   y: number;
   vx: number;
+  /** position at the start of the last tick (render interpolation) */
+  prevX: number;
 }
 
-/** A swing waiting for its hitbox to go live, plus its fading slash visual. */
+/** A swing waiting for its hitbox to go live. */
 interface Swing {
   used: boolean;
   a: Fighter | null;
@@ -23,54 +24,58 @@ interface Swing {
   dir: 1 | -1;
   age: number;
   windup: number;
-  hitDone: boolean;
-  slash: Phaser.GameObjects.Image;
+  dmgMul: number;
 }
 
-const SLASH_MS = 160;
-const SLASH_ALPHA = 0.55;
 const MAX_SWINGS = 24;
 const MAX_SHOTS = 32;
-const MAX_FX = 36;
 
-// Scratch rectangles: reused every frame instead of allocating per fighter / shot.
-const hitbox = new Phaser.Geom.Rectangle();
-const shotBox = new Phaser.Geom.Rectangle();
-const bodyBox = new Phaser.Geom.Rectangle();
+/** Axis-aligned box, reused (no per-tick allocation). */
+interface Box {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+const hitbox: Box = { x: 0, y: 0, w: 0, h: 0 };
+const shotBox: Box = { x: 0, y: 0, w: 0, h: 0 };
 
-function bodyRect(f: Fighter): Phaser.Geom.Rectangle {
+const overlaps = (a: Box, f: Fighter): boolean => {
   const b = f.body;
-  return bodyBox.setTo(b.x, b.y, b.width, b.height);
-}
+  return a.x < b.right && a.x + a.w > b.left && a.y < b.bottom && a.y + a.h > b.top;
+};
 
-function setMeleeBox(a: Fighter, dir: number, range: number): Phaser.Geom.Rectangle {
+/** The melee hitbox in front of a fighter (also used by the view to place the slash). */
+export function meleeBox(a: Fighter, dir: number, range: number, out: Box = hitbox): Box {
   const b = a.body;
-  return hitbox.setTo(dir > 0 ? b.right : b.left - range, b.y + b.height * 0.1, range, b.height * 0.8);
+  out.x = dir > 0 ? b.right : b.left - range;
+  out.y = b.y + b.height * 0.1;
+  out.w = range;
+  out.h = b.height * 0.8;
+  return out;
 }
 
-/** Hitboxes vs hurtboxes for melee swings and projectiles. All visuals are pooled and capped,
- *  and nothing uses timers or tweens, so a scene restart can't leave anything behind. */
+/** Hitboxes vs hurtboxes for melee swings and projectiles. Pure simulation: visuals live in CombatView,
+ *  which hears about swings/hits through World events and draws `shots` each frame. */
 export class Combat {
   readonly shots: Shot[] = [];
 
   private swings: Swing[] = [];
   private freeShots: Shot[] = [];
-  private fxPool: Phaser.GameObjects.Sprite[] = [];
-  private fxSteal = 0;
-  private puffs: { dust?: Phaser.GameObjects.Particles.ParticleEmitter; spark?: Phaser.GameObjects.Particles.ParticleEmitter } = {};
 
-  constructor(private scene: Phaser.Scene, private getFighters: () => Fighter[]) {}
+  constructor(private world: World) {}
 
   melee(a: Fighter): void {
     const m = a.def.melee;
-    const range = m.range * a.def.scale;
-    this.scene.events.emit('sfx:swing');
-
+    const range = m.range * a.def.scale * a.meleeRangeMul;
+    if (this.world.predicting) {
+      this.world.emit({ k: 'swing', f: a, range, dir: a.facing }); // client prediction: show the swing, the host decides what it hits
+      return;
+    }
     let sw: Swing | undefined;
     for (const s of this.swings) if (!s.used) { sw = s; break; }
     if (!sw && this.swings.length < MAX_SWINGS) {
-      const slash = this.scene.add.image(0, 0, this.scene.textures.exists('slash') ? 'slash' : 'proj').setDepth(7).setBlendMode(Phaser.BlendModes.ADD);
-      sw = { used: false, a: null, move: null, range: 0, dir: 1, age: 0, windup: 0, hitDone: false, slash };
+      sw = { used: false, a: null, move: null, range: 0, dir: 1, age: 0, windup: 0, dmgMul: 1 };
       this.swings.push(sw);
     }
     if (!sw) return; // pool exhausted: skip the swing (can't happen at normal cooldowns)
@@ -82,165 +87,83 @@ export class Combat {
     sw.dir = a.facing;
     sw.age = 0;
     sw.windup = m.windup ?? 70;
-    sw.hitDone = false;
-    const r = setMeleeBox(a, sw.dir, range);
-    sw.slash.setDisplaySize(range * 1.15, a.body.height * 0.95).setFlipX(sw.dir < 0).setTint(a.def.trail ?? a.def.color).setPosition(r.centerX, r.centerY).setAlpha(SLASH_ALPHA).setActive(true).setVisible(true);
+    sw.dmgMul = a.meleeDamageMul;
+    this.world.emit({ k: 'swing', f: a, range, dir: a.facing });
   }
 
-  fire(a: Fighter): void {
-    if (this.shots.length >= MAX_SHOTS) return;
-    const s = a.def.special;
-    const x = a.x + a.facing * a.body.halfWidth;
-    const y = a.y - a.body.height * 0.1;
-    let shot = this.freeShots.pop();
-    if (shot) {
-      shot.sprite.enableBody(true, x, y, true, true);
-    } else {
-      const sprite = this.scene.physics.add.sprite(x, y, 'proj');
-      sprite.body.setAllowGravity(false);
-      shot = { sprite, owner: a, move: s, life: 0, team: a.team, x, y, vx: 0 };
+  /** `move` overrides the fighter's special (power-up rounds), `yOff` shifts the shot up/down (DDoS lanes, minigun spread), `quiet` skips the sound event. */
+  fire(a: Fighter, move?: ProjectileDef, yOff = 0, quiet = false): void {
+    if (this.world.predicting) {
+      if (!quiet) this.world.emit({ k: 'special', f: a }); // client prediction: the shot itself comes from the host
+      return;
     }
-    shot.sprite.setTint(s.color).setScale(s.size).setDepth(6).setActive(true).setVisible(true);
-    shot.sprite.setVelocityX(a.facing * s.speed);
+    if (this.shots.length >= MAX_SHOTS) return;
+    const s = move ?? a.def.special;
+    const x = a.x + a.facing * a.body.halfWidth;
+    const y = a.y - a.body.height * 0.1 + yOff;
+    const shot = this.freeShots.pop() ?? { owner: a, move: s, life: 0, team: a.team, x, y, vx: 0, prevX: x };
     shot.owner = a;
     shot.move = s;
     shot.life = s.life;
     shot.team = a.team;
-    shot.x = x;
+    shot.x = shot.prevX = x;
     shot.y = y;
     shot.vx = a.facing * s.speed;
     this.shots.push(shot);
-    this.scene.events.emit('sfx:special');
+    if (!quiet) this.world.emit({ k: 'special', f: a });
   }
 
-  update(dt: number): void {
-    const fighters = this.getFighters();
+  /** Move projectiles (part of the physics phase, before fighters act). */
+  move(dt: number): void {
+    const s = dt / 1000;
+    for (const shot of this.shots) {
+      shot.prevX = shot.x;
+      shot.x += shot.vx * s;
+    }
+  }
 
-    // melee swings: fade the slash, fire the hitbox once after the wind-up
+  /** Resolve hits: swings whose wind-up just ended, and projectiles. */
+  update(dt: number): void {
+    const fighters = this.world.fighters;
+
     for (const sw of this.swings) {
       if (!sw.used) continue;
       sw.age += dt;
+      if (sw.age < sw.windup) continue;
       const a = sw.a!;
-      if (!sw.hitDone && sw.age >= sw.windup) {
-        sw.hitDone = true;
-        if (a.alive && a.hitstun <= 0) {
-          const r = setMeleeBox(a, sw.dir, sw.range);
-          sw.slash.setPosition(r.centerX, r.centerY);
-          for (const t of fighters) {
-            if (t.team === a.team || !t.alive) continue;
-            if (Phaser.Geom.Intersects.RectangleToRectangle(r, bodyRect(t))) this.hit(t, sw.move!, a.x);
-          }
+      if (a.alive && a.hitstun <= 0) {
+        const r = meleeBox(a, sw.dir, sw.range);
+        for (const t of fighters) {
+          if (t.team === a.team || !t.alive) continue;
+          if (overlaps(r, t)) t.takeHit(sw.move!, a.x, a, sw.dmgMul);
         }
       }
-      if (sw.age >= SLASH_MS && sw.hitDone) {
-        sw.used = false;
-        sw.a = null;
-        sw.slash.setActive(false).setVisible(false);
-      } else {
-        sw.slash.setAlpha(SLASH_ALPHA * Math.max(0, 1 - sw.age / SLASH_MS));
-      }
+      sw.used = false;
+      sw.a = null;
     }
 
-    // projectiles
     for (let n = this.shots.length - 1; n >= 0; n--) {
       const s = this.shots[n];
       s.life -= dt;
-      s.x = s.sprite.x;
-      s.y = s.sprite.y;
-      s.vx = s.sprite.body?.velocity.x ?? 0;
       let done = s.life <= 0;
       if (!done) {
         const r = 8 * s.move.size;
-        shotBox.setTo(s.x - r, s.y - r, r * 2, r * 2);
+        shotBox.x = s.x - r;
+        shotBox.y = s.y - r;
+        shotBox.w = shotBox.h = r * 2;
         for (const t of fighters) {
           if (t.team === s.owner.team || !t.alive) continue;
-          if (Phaser.Geom.Intersects.RectangleToRectangle(shotBox, bodyRect(t)) && this.hit(t, s.move, s.x)) {
+          if (overlaps(shotBox, t) && t.takeHit(s.move, s.x, s.owner)) {
             done = true;
             break;
           }
         }
       }
       if (done) {
-        s.sprite.disableBody(true, true); // inactive + invisible, kept for reuse
         this.freeShots.push(s);
         this.shots[n] = this.shots[this.shots.length - 1];
         this.shots.pop();
       }
     }
-  }
-
-  /** Drop all references. The scene's display list owns the actual objects and destroys them. */
-  destroy(): void {
-    this.swings.length = 0;
-    this.shots.length = 0;
-    this.freeShots.length = 0;
-    this.fxPool.length = 0;
-    this.puffs = {};
-  }
-
-  private hit(target: Fighter, move: MoveDef, fromX: number): boolean {
-    if (!target.takeHit(move, fromX)) return false;
-    this.spark(target.x, target.y);
-    return true;
-  }
-
-  /** Knockout shockwave ring. */
-  ring(x: number, y: number): void {
-    if (this.scene.anims.exists('fx_ring')) this.fx('fx_ring', x, y, 3.5, 9);
-  }
-
-  /** Play a one-shot effect animation on a pooled sprite (capped at MAX_FX, oldest reused when full). */
-  private fx(key: string, x: number, y: number, scale: number, depth: number, originY = 0.5): void {
-    let s: Phaser.GameObjects.Sprite | undefined;
-    for (const p of this.fxPool) if (!p.active) { s = p; break; }
-    if (!s) {
-      if (this.fxPool.length < MAX_FX) {
-        s = this.scene.add.sprite(x, y, key);
-        s.on('animationcomplete', () => s!.setActive(false).setVisible(false));
-        this.fxPool.push(s);
-      } else {
-        s = this.fxPool[this.fxSteal++ % this.fxPool.length];
-      }
-    }
-    s.setActive(true).setVisible(true).setPosition(x, y).setScale(scale).setDepth(depth).setOrigin(0.5, originY);
-    s.setFlipX(Math.random() < 0.5);
-    s.play(key);
-  }
-
-  /** Small grey puff for jumps and landings. */
-  dust(x: number, y: number, count = 6): void {
-    if (this.scene.anims.exists('fx_dust')) {
-      this.fx('fx_dust', x, y, 1.3, 4, 1);
-      return;
-    }
-    // fallback (no art): one shared emitter, never one per call
-    const e = (this.puffs.dust ??= this.scene.add
-      .particles(0, 0, 'proj', {
-        speedX: { min: -100, max: 100 },
-        speedY: { min: -70, max: -10 },
-        lifespan: 300,
-        scale: { start: 0.45, end: 0 },
-        alpha: { start: 0.7, end: 0 },
-        tint: 0xcbd5e1,
-        emitting: false,
-      })
-      .setDepth(4));
-    e.explode(count, x, y);
-  }
-
-  spark(x: number, y: number, count = 10): void {
-    if (this.scene.anims.exists('fx_burst')) {
-      this.fx('fx_burst', x, y, count > 15 ? 2.6 : 1.5, 8);
-      return;
-    }
-    const e = (this.puffs.spark ??= this.scene.add
-      .particles(0, 0, 'proj', {
-        speed: { min: 80, max: 300 },
-        lifespan: 320,
-        scale: { start: 0.7, end: 0 },
-        emitting: false,
-      })
-      .setDepth(8));
-    e.explode(count, x, y);
   }
 }

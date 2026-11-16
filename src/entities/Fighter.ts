@@ -1,30 +1,68 @@
-import Phaser from 'phaser';
 import type { FighterDef, MoveDef } from '../data/types';
-import { ART, textureKey, type ArtState } from '../data/art';
+import { ART, fighterBox } from '../data/art';
 import { launch } from '../systems/Knockback';
-import type { Combat } from '../systems/Combat';
+import { Body, type Ledge } from '../sim/kinematics';
+import type { World } from '../sim/World';
+import { DDOS_LANES, MINIGUN_GAP_MS, MINIGUN_ROUNDS, PACKET, POWER_MODS, POWERS, type PowerId, type PowerMods } from '../data/powerups';
+
+/** Snapshot of a fighter's own simulation state (see Fighter.capture). */
+export interface FighterMemo {
+  x: number; y: number; vx: number; vy: number; prevX: number; prevY: number; height: number; grounded: boolean; groundSolid: boolean; gravity: boolean;
+  facing: 1 | -1; hitstun: number; invuln: number; attackCd: number; specialCd: number; dropTimer: number;
+  jumpsLeft: number; flash: number; action: 'melee' | 'special' | 'ultimate' | null; actionSeq: number; ducking: boolean; hanging: boolean;
+  ledgeGrabs: number; power: PowerId | null; powerMs: number; ult: number; ultMs: number; ultBurst: boolean;
+  hang: Ledge | null; hangMs: number; ledgeCd: number; wasGrounded: boolean; lastVy: number;
+  fireTimer: number; burstLeft: number; burstGap: number; fx: number; fy: number;
+}
 
 export type Team = 'hero' | 'enemy';
 
 export interface Intent {
   dir: -1 | 0 | 1;
-  jump: boolean; // one-frame pulses
+  jump: boolean; // one-tick pulses
+  /** held: on a drop-through platform = fall through it; on solid ground = duck; on a ledge = let go */
   drop: boolean;
   attack: boolean;
   special: boolean;
+  /** one-tick pulse: fire the ultimate (needs a full meter) */
+  ultimate: boolean;
 }
 
-export const emptyIntent = (): Intent => ({ dir: 0, jump: false, drop: false, attack: false, special: false });
+export const emptyIntent = (): Intent => ({ dir: 0, jump: false, drop: false, attack: false, special: false, ultimate: false });
+
+/** Ultimate: the meter fills as heroes deal (x0.9) and take (x0.35) damage. At ULT_MAX press the ultimate button: the hero is
+ *  invulnerable for ULT_WIND_MS playing the 6-frame ultimate animation, and the blast goes off ULT_BURST_AT ms before it ends. */
+export const ULT_MAX = 100;
+export const ULT_WIND_MS = 660;
+export const ULT_BURST_AT = 330; // = start of ultimate frame 4 ("RELEASE") at 110 ms a frame
 
 const frame = (dt: number) => dt / 16.667;
 
-/** Base fighter: movement, jumping, attacks, damage %, stocks, animation state.
- *  Player and Bot extend it. */
-export class Fighter extends Phaser.Physics.Arcade.Sprite {
-  declare body: Phaser.Physics.Arcade.Body;
+/** Smash-style ledge rules: you may grab at most this many times before you touch down again. */
+export const LEDGE_MAX_GRABS = 2;
+/** Ledge hang: how long you can dangle, and how long you can't re-grab after letting go (ms). */
+const LEDGE_MAX_HANG = 3600;
+const LEDGE_REGRAB_CD = 450;
+/** Ducking shrinks the hurtbox to this fraction of standing height. */
+export const DUCK_FRAC = 0.55;
+/** A hit within this window of the last one extends the attacker's combo (ms). */
+const COMBO_WINDOW = 1500;
+/** Chance a hit is a crit (x1.6 damage). Seeded rng, so still deterministic. */
+const CRIT_CHANCE = 0.07;
+
+/** Simulation-side fighter: movement, jumping, ducking, ledge grabs, attacks, power-ups, damage %, stocks. Plain data + logic, no Phaser,
+ *  so the same code runs on a network host, in tests and (later) in a worker. FighterView draws it.
+ *  Bot extends it; human fighters are plain Fighters whose intent is filled by an input source. */
+export class Fighter {
+  readonly id: number;
   readonly def: FighterDef;
   readonly team: Team;
-  combat!: Combat;
+  readonly world: World;
+  readonly body: Body;
+  /** distance from the sprite centre (x, y) down to the feet */
+  readonly foot: number;
+  /** real art present: specials wait for their wind-up (release frame) */
+  readonly hasArt: boolean;
 
   damage = 0;
   stocks: number;
@@ -39,142 +77,287 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
   specialCd = 0;
   dropTimer = 0;
   jumpsLeft: number;
-  spawn: Phaser.Math.Vector2;
+  spawn: { x: number; y: number };
+  /** ms of white hit-flash left */
+  flash = 0;
+  /** boss telegraph colour (view tints the sprite), null = none */
+  tint: number | null = null;
+  /** last move started, and a counter that ticks each time one starts (the view restarts the animation on change) */
+  action: 'melee' | 'special' | 'ultimate' | null = null;
+  actionSeq = 0;
+  /** sprite-centre position at the start of the last tick (for render interpolation) */
+  prevX: number;
+  prevY: number;
+
+  // ---- new mechanics -------------------------------------------------------------------------
+  /** crouching on solid ground (smaller hurtbox, can't walk). Replicated to clients. */
+  ducking = false;
+  /** hanging off a platform corner. Replicated to clients. */
+  hanging = false;
+  /** ledge grabs used since last touching down (max LEDGE_MAX_GRABS) */
+  ledgeGrabs = 0;
+  /** held timed power-up (null = none) and ms left. Replicated to clients. */
+  power: PowerId | null = null;
+  powerMs = 0;
+  /** ultimate meter 0..ULT_MAX (heroes only; replicated), ms of the ultimate animation left, and whether its blast already went off */
+  ult = 0;
+  ultMs = 0;
+  private ultBurst = false;
+
+  /** view-only: how far the sprite is drawn from the fighter while a network prediction error is smoothed away */
+  offX = 0;
+  offY = 0;
+
+  // ---- dopamine bookkeeping ------------------------------------------------------------------
+  /** hits landed in the current chain, and ms until it drops */
+  combo = 0;
+  comboMs = 0;
+  bestCombo = 0;
+  /** who hit us last (kill credit) and for how long that still counts (ms) */
+  lastHitBy: Fighter | null = null;
+  lastHitMs = 0;
+  /** KOs credited to this fighter, current streak (resets when they are KO'd), and style score */
+  kos = 0;
+  streak = 0;
+  score = 0;
+
+  private hang: Ledge | null = null;
+  private hangMs = 0;
+  private ledgeCd = 0;
+  private readonly standH: number;
   private wasGrounded = false;
   private lastVy = 0;
-  private flash = 0; // ms of white hit-flash left
   private fireTimer = 0; // ms until a wound-up special leaves the hands (0 = none pending)
-  private animKeys: Partial<Record<ArtState, string | null>> = {};
+  private burstLeft = 0; // minigun rounds still to fire
+  private burstGap = 0;
 
-  // animation (only used when the character has Aseprite art)
-  private hasArt = false;
-  private animated = false; // art has a real run cycle; otherwise we fake motion with lean/tumble
-  private action: ArtState | null = null;
-  private actionTimer = 0;
-
-  constructor(scene: Phaser.Scene, x: number, y: number, def: FighterDef, team: Team) {
-    super(scene, x, y, textureKey(def.id));
+  constructor(world: World, x: number, y: number, def: FighterDef, team: Team) {
+    this.world = world;
+    this.id = world.newId();
     this.def = def;
     this.team = team;
     this.stocks = def.stocks;
     this.jumpsLeft = def.jumps;
-    this.spawn = new Phaser.Math.Vector2(x, y);
-    this.setScale(def.scale);
-    scene.add.existing(this);
-    scene.physics.add.existing(this);
-    this.body.setMaxVelocity(1100, 1300);
-    this.setDepth(5);
+    this.hasArt = !!ART[def.id];
+    const box = fighterBox(def.id, def.scale);
+    this.body = new Body(box.w, box.h);
+    this.standH = box.h;
+    this.foot = box.foot;
+    this.spawn = { x, y };
+    this.setPosition(x, y);
+    this.prevX = x;
+    this.prevY = y;
+  }
 
-    const art = ART[def.id];
-    if (art) {
-      this.hasArt = true;
-      this.animated = scene.anims.exists(`${def.id}:run`);
-      // physics body is independent of the (larger) art frame; feet sit on the frame's bottom edge
-      this.body.setSize(art.body.w, art.body.h, false);
-      this.body.setOffset((art.frame - art.body.w) / 2, art.frame - art.body.h);
-      this.playState('idle');
-    }
+  /** Sprite centre (the frame middle; feet are `foot` below it). */
+  get x(): number {
+    return this.body.centerX;
+  }
+  get y(): number {
+    return this.body.bottom - this.foot;
   }
 
   get grounded(): boolean {
-    return this.body.blocked.down || this.body.touching.down;
+    return this.body.grounded;
+  }
+
+  // ---- effective stats (def + held power-up) -------------------------------------------------
+  private get pm(): PowerMods | undefined {
+    return this.power ? POWER_MODS[this.power] : undefined;
+  }
+  get speedNow(): number {
+    return this.def.speed * (this.pm?.speed ?? 1);
+  }
+  get weightNow(): number {
+    return this.def.weight * (this.pm?.weight ?? 1);
+  }
+  get jumpsNow(): number {
+    return this.def.jumps + (this.pm?.jumps ?? 0);
+  }
+  get jumpVelNow(): number {
+    return this.def.jumpVelocity * (this.pm?.jumpVelocity ?? 1);
+  }
+  get meleeRangeMul(): number {
+    return this.pm?.meleeRange ?? 1;
+  }
+  get meleeDamageMul(): number {
+    return this.pm?.meleeDamage ?? 1;
+  }
+  private get meleeCdMul(): number {
+    return this.pm?.meleeCooldown ?? 1;
+  }
+
+  /** Teleport (also resets render interpolation so the sprite doesn't sweep across the map). */
+  setPosition(x: number, y: number): void {
+    const b = this.body;
+    b.x = b.prevX = x - b.width / 2;
+    b.y = b.prevY = y + this.foot - b.height;
+    this.prevX = x;
+    this.prevY = y;
+  }
+
+  /** Crouch / stand up with the feet pinned to the ground. */
+  setDuck(on: boolean): void {
+    if (on === this.ducking) return;
+    this.ducking = on;
+    const b = this.body;
+    const h = on ? this.standH * DUCK_FRAC : this.standH;
+    const bottom = b.bottom;
+    const d = b.height - h; // positive when shrinking
+    b.height = h;
+    b.y = bottom - h;
+    b.prevY += d; // keep the previous bottom where it was so landing checks stay valid
+  }
+
+  /** Take a timed power-up (replaces the current one). */
+  givePower(id: PowerId): void {
+    const def = POWERS[id];
+    if (def.ms <= 0) return;
+    this.power = id;
+    this.powerMs = def.ms;
+    this.burstLeft = 0;
+    const mods = POWER_MODS[id];
+    if (mods?.jumps) this.jumpsLeft += mods.jumps;
+  }
+
+  clearPower(): void {
+    this.power = null;
+    this.powerMs = 0;
+    this.burstLeft = 0;
+    this.jumpsLeft = Math.min(this.jumpsLeft, this.jumpsNow);
   }
 
   tick(dt: number): void {
     if (!this.alive) return;
-    if (this.flash > 0) {
-      this.flash -= dt;
-      if (this.flash <= 0) this.clearTint();
-    }
     const body = this.body;
+    const w = this.world;
+    this.flash = Math.max(0, this.flash - dt);
     this.hitstun = Math.max(0, this.hitstun - dt);
     this.invuln = Math.max(0, this.invuln - dt);
     this.attackCd = Math.max(0, this.attackCd - dt);
     this.specialCd = Math.max(0, this.specialCd - dt);
     this.dropTimer = Math.max(0, this.dropTimer - dt);
-    this.actionTimer = Math.max(0, this.actionTimer - dt);
+    this.ledgeCd = Math.max(0, this.ledgeCd - dt);
+    if (this.comboMs > 0 && (this.comboMs -= dt) <= 0) this.combo = 0;
+    if (this.lastHitMs > 0 && (this.lastHitMs -= dt) <= 0) this.lastHitBy = null;
+    if (this.power && (this.powerMs -= dt) <= 0) this.clearPower();
     if (this.fireTimer > 0) {
       this.fireTimer -= dt;
-      if (this.fireTimer <= 0 && this.hitstun <= 0) this.combat.fire(this);
+      if (this.fireTimer <= 0 && this.hitstun <= 0) this.releaseSpecial();
     }
+    if (this.burstLeft > 0) this.tickBurst(dt);
 
     const grounded = this.grounded;
-    if (grounded && body.velocity.y >= 0) this.jumpsLeft = this.def.jumps;
-    if (grounded && !this.wasGrounded && this.lastVy > 250) {
-      this.scene.events.emit('sfx:land', this.lastVy);
-      if (this.lastVy > 350) this.combat.dust(this.x, body.bottom, 6);
+    if (this.ultMs > 0) {
+      // ultimate in progress: planted, untouchable; the blast goes off near the end of the animation
+      this.ultMs -= dt;
+      this.invuln = Math.max(this.invuln, 120);
+      body.vx *= 0.7;
+      if (!this.ultBurst && this.ultMs <= ULT_BURST_AT) {
+        this.ultBurst = true;
+        w.ultimateBlast(this);
+      }
+      if (this.ultMs <= 0) this.ultMs = 0;
+      this.wasGrounded = grounded;
+      this.lastVy = body.vy;
+      return;
     }
+    if (grounded) this.ledgeGrabs = 0; // touching down refills the ledge grabs (Smash rule)
+
+    if (this.hang) {
+      this.tickHang(dt);
+      this.wasGrounded = false;
+      this.lastVy = 0;
+      return;
+    }
+
+    if (grounded && body.vy >= 0) this.jumpsLeft = this.jumpsNow;
+    if (grounded && !this.wasGrounded && this.lastVy > 250) w.emit({ k: 'land', f: this, vy: this.lastVy, dust: this.lastVy > 350 });
     const i = this.intent;
 
+    // duck: hold down on solid ground (on a drop-through platform, down drops instead)
+    this.setDuck(i.drop && grounded && body.groundSolid && this.hitstun <= 0);
+
     if (this.hitstun <= 0) {
-      const target = i.dir * this.def.speed * this.speedMul;
+      const target = this.ducking ? 0 : i.dir * this.speedNow * this.speedMul;
       const k = 1 - Math.pow(1 - (grounded ? 0.3 : 0.12), frame(dt));
-      body.setVelocityX(body.velocity.x + (target - body.velocity.x) * k);
+      body.vx += (target - body.vx) * k;
       if (i.dir !== 0) this.facing = i.dir;
-      if (i.drop && grounded) this.dropTimer = 220;
+      if (i.drop && grounded && !body.groundSolid) this.dropTimer = 220;
 
       let jumped = false;
       if (i.jump && this.jumpsLeft > 0) {
-        if (grounded) this.combat.dust(this.x, body.bottom, 5);
-        body.setVelocityY(-this.def.jumpVelocity * (grounded ? 1 : 0.92));
+        body.vy = -this.jumpVelNow * (grounded ? 1 : 0.92);
         this.jumpsLeft--;
         jumped = true;
-        this.scene.events.emit('sfx:jump');
+        w.emit({ k: 'jump', f: this, grounded });
       }
       // Walking off a ledge costs the ground jump.
-      if (this.wasGrounded && !grounded && !jumped) this.jumpsLeft = Math.min(this.jumpsLeft, this.def.jumps - 1);
+      if (this.wasGrounded && !grounded && !jumped) this.jumpsLeft = Math.min(this.jumpsLeft, this.jumpsNow - 1);
 
+      if (i.ultimate && this.ult >= ULT_MAX) {
+        this.ult = 0;
+        this.ultMs = ULT_WIND_MS;
+        this.ultBurst = false;
+        this.invuln = Math.max(this.invuln, ULT_WIND_MS + 150);
+        this.fireTimer = 0;
+        this.burstLeft = 0;
+        this.startAction('ultimate');
+        w.emit({ k: 'ultimate', f: this, phase: 'start' });
+        this.wasGrounded = grounded;
+        this.lastVy = body.vy;
+        return;
+      }
       if (i.attack && this.attackCd <= 0) {
-        this.attackCd = this.def.melee.cooldown;
+        this.attackCd = this.def.melee.cooldown * this.meleeCdMul;
         this.startAction('melee');
-        this.combat.melee(this);
+        w.combat.melee(this);
       }
       if (i.special && this.specialCd <= 0) {
-        this.specialCd = this.def.special.cooldown;
+        this.specialCd = this.power === 'ap' ? 800 : this.def.special.cooldown * (this.power === 'ddos' ? 1.15 : 1);
         this.startAction('special');
-        const w = this.hasArt ? this.def.special.windup ?? 0 : 0;
-        if (w > 0) this.fireTimer = w;
-        else this.combat.fire(this);
+        const wind = this.hasArt ? this.def.special.windup ?? 0 : 0;
+        if (wind > 0) this.fireTimer = wind;
+        else this.releaseSpecial();
       }
+      if (!grounded && !jumped) this.tryGrabLedge();
     } else if (grounded) {
-      body.setVelocityX(body.velocity.x * Math.pow(0.9, frame(dt))); // slide to a stop
+      body.vx *= Math.pow(0.9, frame(dt)); // slide to a stop
     }
     this.wasGrounded = grounded;
-    this.lastVy = body.velocity.y;
-
-    this.setFlipX(this.facing < 0);
-    this.setAlpha(this.invuln > 0 ? (Math.floor(this.invuln / 90) % 2 ? 0.3 : 0.75) : 1);
-    this.updateAnim(grounded);
-    this.updateLean();
+    this.lastVy = body.vy;
   }
 
-  /** Single-pose art (bosses, minions): lean into movement and tumble when launched. Rotation never touches the physics body. */
-  private updateLean(): void {
-    if (this.animated) return;
-    const v = this.body.velocity;
-    if (this.hitstun > 0 && Math.hypot(v.x, v.y) > 450) {
-      this.angle += Math.sign(v.x || 1) * 14; // tumble
-      return;
-    }
-    const wrapped = Phaser.Math.Angle.WrapDegrees(this.angle);
-    const target = Phaser.Math.Clamp(v.x / 300, -1, 1) * 6;
-    this.setAngle(Math.abs(wrapped) > 90 ? 0 : Phaser.Math.Linear(wrapped, target, 0.25));
-  }
-
-  /** Returns true if the hit connected. */
-  takeHit(move: MoveDef, fromX: number): boolean {
+  /** Returns true if the hit connected. `by` = the attacker (for combos and kill credit), `dmgMul` = attacker power-up scaling. */
+  takeHit(move: MoveDef, fromX: number, by?: Fighter, dmgMul = 1): boolean {
     if (!this.alive || this.invuln > 0) return false;
-    this.damage += move.damage;
-    const l = launch(this.damage, move, this.def.weight, this.x < fromX ? -1 : 1);
-    this.body.setVelocity(l.vx, l.vy);
+    const w = this.world;
+    const crit = by !== undefined && w.rng.next() < CRIT_CHANCE;
+    const dealt = move.damage * dmgMul * (crit ? 1.6 : 1);
+    this.damage += dealt;
+    if (this.hang) this.releaseLedge(LEDGE_REGRAB_CD, 'drop'); // knocked off the ledge
+    this.setDuck(false);
+    const l = launch(this.damage, move, this.weightNow, this.x < fromX ? -1 : 1);
+    this.body.vx = l.vx;
+    this.body.vy = l.vy;
     this.hitstun = l.stun;
-    this.actionTimer = 0; // getting hit cancels your own move animation
+    this.action = null; // getting hit cancels your own move...
     this.fireTimer = 0; // ...and a special that has not left the hands yet
+    this.burstLeft = 0;
     this.jumpsLeft = Math.max(this.jumpsLeft, 1);
-    this.setTintFill(0xffffff);
     this.flash = 70;
-    this.scene.events.emit('sfx:hit', l.power, this.x);
-    if (l.power > 700) this.scene.cameras.main.shake(100, 0.004);
+    if (this.team === 'hero') this.ult = Math.min(ULT_MAX, this.ult + dealt * 0.35);
+    if (by && by !== this) {
+      if (by.team === 'hero') by.ult = Math.min(ULT_MAX, by.ult + dealt * 0.9);
+      this.lastHitBy = by;
+      this.lastHitMs = 6000;
+      by.combo++;
+      by.comboMs = COMBO_WINDOW;
+      if (by.combo > by.bestCombo) by.bestCombo = by.combo;
+      by.score += Math.round(dealt) * by.combo;
+      if (by.combo >= 2) w.emit({ k: 'combo', f: by, n: by.combo });
+    }
+    w.emit({ k: 'hit', f: this, power: l.power, dmg: dealt, crit, by, special: 'speed' in move });
     return true;
   }
 
@@ -183,61 +366,221 @@ export class Fighter extends Phaser.Physics.Arcade.Sprite {
     this.stocks--;
     this.damage = 0;
     this.hitstun = 0;
-    this.actionTimer = 0;
+    this.action = null;
+    this.ultMs = 0;
     this.fireTimer = 0;
-    this.body.setVelocity(0, 0);
+    this.flash = 0;
+    this.tint = null;
+    this.combo = this.comboMs = 0;
+    this.streak = 0;
+    this.lastHitBy = null;
+    this.lastHitMs = 0;
+    if (this.hang) this.releaseLedge(0, 'drop');
+    this.ledgeGrabs = 0;
+    this.setDuck(false);
+    this.clearPower();
+    this.body.vx = this.body.vy = 0;
     if (this.stocks <= 0) {
       this.alive = false;
-      this.setActive(false).setVisible(false);
-      this.body.enable = false;
       return true;
     }
     this.setPosition(this.spawn.x, this.spawn.y);
     this.invuln = 2000;
-    this.jumpsLeft = this.def.jumps;
+    this.jumpsLeft = this.jumpsNow;
     return false;
   }
 
-  // ---- animation -------------------------------------------------------
+  // ---- specials ------------------------------------------------------------------------------
 
-  /** Animation key for a state, or null when the sheet lacks it (resolved once, then cached). */
-  private animKey(state: ArtState): string | null {
-    let k = this.animKeys[state];
-    if (k === undefined) {
-      const key = `${this.def.id}:${state}`;
-      k = this.scene.anims.exists(key) ? key : null;
-      this.animKeys[state] = k;
+  /** The special leaves the hands: normal shot, AP minigun burst or DDoS lanes. */
+  private releaseSpecial(): void {
+    const c = this.world.combat;
+    if (this.power === 'ap') {
+      this.burstLeft = MINIGUN_ROUNDS;
+      this.burstGap = 0;
+    } else if (this.power === 'ddos') {
+      DDOS_LANES.forEach((lane, n) => c.fire(this, undefined, lane, n > 0));
+    } else {
+      c.fire(this);
     }
-    return k;
   }
 
-  /** Play a state's animation, falling back gracefully if a sheet lacks that tag. */
-  private playState(state: ArtState): void {
-    const fallback: Partial<Record<ArtState, ArtState>> = { launch: 'hurt', hurt: 'idle', fall: 'jump', jump: 'idle', run: 'idle', melee: 'idle', special: 'melee' };
-    let s: ArtState | undefined = state;
-    while (s && !this.animKey(s)) s = fallback[s];
-    if (s) this.anims.play(this.animKey(s)!, true);
+  private tickBurst(dt: number): void {
+    if (this.hitstun > 0) {
+      this.burstLeft = 0;
+      return;
+    }
+    this.burstGap -= dt;
+    if (this.burstGap > 0) return;
+    this.burstGap = MINIGUN_GAP_MS;
+    const first = this.burstLeft === MINIGUN_ROUNDS;
+    this.burstLeft--;
+    this.world.combat.fire(this, PACKET, (this.world.rng.next() - 0.5) * 30, !first && this.burstLeft % 4 !== 0);
   }
 
-  private startAction(state: 'melee' | 'special'): void {
-    if (!this.hasArt) return;
-    const key = this.animKey(state) ?? this.animKey('melee');
-    const anim = key ? this.scene.anims.get(key) : null;
-    if (!anim) return;
+  // ---- ledges --------------------------------------------------------------------------------
+
+  /** A free ledge is almost within reach on the side we face (AI uses this to hold its jumps and catch the ledge instead). */
+  get ledgeAlmostInReach(): boolean {
+    if (this.ledgeGrabs >= LEDGE_MAX_GRABS || this.hanging) return false;
+    const b = this.body;
+    for (const L of this.world.ledges) {
+      if (L.holder !== 0 || this.facing !== -L.side) continue;
+      const reach = L.side < 0 ? L.x - b.right : b.left - L.x;
+      const dy = b.top - L.y;
+      if (reach > -4 && reach < 110 && dy > -40 && dy < 70) return true;
+    }
+    return false;
+  }
+
+  /** Airborne, falling, facing a free ledge with the hands near it: grab on (Smash rules, max LEDGE_MAX_GRABS per airtime). */
+  private tryGrabLedge(): void {
+    if (this.ledgeGrabs >= LEDGE_MAX_GRABS || this.ledgeCd > 0 || this.body.vy < -60) return;
+    const b = this.body;
+    for (const L of this.world.ledges) {
+      if (L.holder !== 0 || this.facing !== -L.side) continue;
+      const reach = L.side < 0 ? L.x - b.right : b.left - L.x; // how far the near edge is from the corner
+      const dy = b.top - L.y;
+      if (reach < -4 || reach > 30 || dy < -30 || dy > 60) continue;
+      this.grabLedge(L);
+      return;
+    }
+  }
+
+  private grabLedge(L: Ledge): void {
+    const b = this.body;
+    this.setDuck(false);
+    L.holder = this.id;
+    this.hang = L;
+    this.hanging = true;
+    this.hangMs = 0;
+    this.ledgeGrabs++;
+    b.gravity = false;
+    b.vx = b.vy = 0;
+    b.x = b.prevX = L.side < 0 ? L.x - 2 - b.width : L.x + 2;
+    b.y = b.prevY = L.y + 8;
+    this.prevX = this.x;
+    this.prevY = this.y;
+    this.facing = (-L.side) as 1 | -1;
+    // ledge intangibility, shorter on the second grab so the ledge can't be camped forever
+    this.invuln = Math.max(this.invuln, this.ledgeGrabs === 1 ? 1400 : 700);
+    this.jumpsLeft = this.jumpsNow;
+    this.action = null;
+    this.fireTimer = 0;
+    this.burstLeft = 0;
+    this.world.emit({ k: 'ledge', f: this, kind: 'grab', n: this.ledgeGrabs });
+  }
+
+  private releaseLedge(cd: number, kind: 'drop' | 'jump' | 'climb'): void {
+    const L = this.hang;
+    if (!L) return;
+    L.holder = 0;
+    this.hang = null;
+    this.hanging = false;
+    this.body.gravity = true;
+    this.ledgeCd = cd;
+    this.world.emit({ k: 'ledge', f: this, kind, n: this.ledgeGrabs });
+  }
+
+  /** While hanging: toward the stage = climb up, jump = ledge jump, attack = climb + swing, down / away = let go. */
+  private tickHang(dt: number): void {
+    const L = this.hang!;
+    const i = this.intent;
+    const b = this.body;
+    this.hangMs += dt;
+    b.vx = b.vy = 0;
+    const toward = (-L.side) as 1 | -1;
+    const ready = this.hangMs > 140 && this.hitstun <= 0;
+    if (!ready) {
+      if (this.hangMs > LEDGE_MAX_HANG) this.releaseLedge(LEDGE_REGRAB_CD, 'drop');
+      return;
+    }
+    if (i.jump) {
+      this.releaseLedge(LEDGE_REGRAB_CD, 'jump');
+      b.vy = -this.jumpVelNow;
+      b.vx = toward * 170;
+      this.jumpsLeft = Math.max(0, this.jumpsLeft - 1);
+      this.facing = toward;
+    } else if (i.attack || i.dir === toward) {
+      const swing = i.attack;
+      this.releaseLedge(200, 'climb');
+      b.x = b.prevX = L.x + toward * (b.halfWidth + 6) - b.halfWidth;
+      b.y = b.prevY = L.y - b.height - 0.5;
+      b.vx = b.vy = 0;
+      this.facing = toward;
+      this.invuln = Math.max(this.invuln, 350);
+      this.prevX = this.x;
+      this.prevY = this.y;
+      if (swing && this.attackCd <= 0) {
+        this.attackCd = this.def.melee.cooldown * this.meleeCdMul;
+        this.startAction('melee');
+        this.world.combat.melee(this);
+      }
+    } else if (i.drop || i.dir === L.side || this.hangMs > LEDGE_MAX_HANG) {
+      this.releaseLedge(LEDGE_REGRAB_CD, 'drop');
+    }
+  }
+
+  // ---- network prediction ------------------------------------------------------------------
+
+  /** Copy of everything tick() reads or writes (a client re-simulates its own fighter from one of these). */
+  capture(): FighterMemo {
+    const b = this.body;
+    return {
+      x: b.x, y: b.y, vx: b.vx, vy: b.vy, prevX: b.prevX, prevY: b.prevY, height: b.height, grounded: b.grounded, groundSolid: b.groundSolid, gravity: b.gravity,
+      facing: this.facing, hitstun: this.hitstun, invuln: this.invuln, attackCd: this.attackCd, specialCd: this.specialCd, dropTimer: this.dropTimer,
+      jumpsLeft: this.jumpsLeft, flash: this.flash, action: this.action, actionSeq: this.actionSeq, ducking: this.ducking, hanging: this.hanging,
+      ledgeGrabs: this.ledgeGrabs, power: this.power, powerMs: this.powerMs, ult: this.ult, ultMs: this.ultMs, ultBurst: this.ultBurst,
+      hang: this.hang, hangMs: this.hangMs, ledgeCd: this.ledgeCd, wasGrounded: this.wasGrounded, lastVy: this.lastVy,
+      fireTimer: this.fireTimer, burstLeft: this.burstLeft, burstGap: this.burstGap, fx: this.prevX, fy: this.prevY,
+    };
+  }
+
+  restore(m: FighterMemo): void {
+    const b = this.body;
+    b.x = m.x; b.y = m.y; b.vx = m.vx; b.vy = m.vy; b.prevX = m.prevX; b.prevY = m.prevY; b.height = m.height; b.grounded = m.grounded; b.groundSolid = m.groundSolid; b.gravity = m.gravity;
+    this.facing = m.facing; this.hitstun = m.hitstun; this.invuln = m.invuln; this.attackCd = m.attackCd; this.specialCd = m.specialCd; this.dropTimer = m.dropTimer;
+    this.jumpsLeft = m.jumpsLeft; this.flash = m.flash; this.action = m.action; this.actionSeq = m.actionSeq; this.ducking = m.ducking; this.hanging = m.hanging;
+    this.ledgeGrabs = m.ledgeGrabs; this.power = m.power; this.powerMs = m.powerMs; this.ult = m.ult; this.ultMs = m.ultMs; this.ultBurst = m.ultBurst;
+    this.hang = m.hang; this.hangMs = m.hangMs; this.ledgeCd = m.ledgeCd; this.wasGrounded = m.wasGrounded; this.lastVy = m.lastVy;
+    this.fireTimer = m.fireTimer; this.burstLeft = m.burstLeft; this.burstGap = m.burstGap; this.prevX = m.fx; this.prevY = m.fy;
+  }
+
+  /** Network client: the host says this fighter is / is not on a ledge; make the private ledge state agree (quietly, no events). */
+  syncHang(on: boolean): void {
+    if (on === (this.hang !== null)) {
+      this.hanging = on;
+      return;
+    }
+    if (!on) {
+      this.hang = null;
+      this.hanging = false;
+      this.body.gravity = true;
+      return;
+    }
+    let best: Ledge | null = null;
+    let bd = Infinity;
+    for (const L of this.world.ledges) {
+      const d = Math.abs(L.x - this.body.centerX) + Math.abs(L.y - this.body.top);
+      if (d < bd) {
+        bd = d;
+        best = L;
+      }
+    }
+    if (!best) return;
+    this.hang = best;
+    this.hanging = true;
+    this.hangMs = 200;
+    this.body.gravity = false;
+  }
+
+  /** The ledge this fighter is holding (network client keeps the ledge's holder flag in step with it). */
+  get ledge(): Ledge | null {
+    return this.hang;
+  }
+
+  private startAction(state: 'melee' | 'special' | 'ultimate'): void {
     this.action = state;
-    this.actionTimer = anim.duration;
-    this.anims.play(anim.key, false);
-  }
-
-  private updateAnim(grounded: boolean): void {
-    if (!this.hasArt) return;
-    const vx = this.body.velocity.x;
-    let s: ArtState;
-    if (this.hitstun > 0) s = Math.hypot(vx, this.body.velocity.y) > 450 ? 'launch' : 'hurt';
-    else if (this.actionTimer > 0 && this.action) return; // let the move animation finish
-    else if (!grounded) s = this.body.velocity.y < 0 ? 'jump' : 'fall';
-    else s = Math.abs(vx) > 40 && this.intent.dir !== 0 ? 'run' : 'idle';
-    this.anims.timeScale = s === 'run' ? Phaser.Math.Clamp(Math.abs(vx) / this.def.speed, 0.6, 1.5) : 1; // legs match the ground speed
-    this.playState(s);
+    this.actionSeq++;
   }
 }

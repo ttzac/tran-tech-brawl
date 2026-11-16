@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": [
+      "node"
+    ],
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "vite.config.ts",
+    "vitest.config.ts",
+    "tools/net",
+    "server/signal",
+    "src/net/signalRoom.ts"
+  ]
+}

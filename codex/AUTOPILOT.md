@@ -1,5 +1,7 @@
 # AUTOPILOT: keep generating until the queue is empty
 
+> **Read `codex/MISSED.md` first.** The last run stopped early with 298 images still available. Stopping is only allowed when `node codex/next.mjs` prints QUEUE EMPTY (or for the gates below); "a batch is finished" or "waiting for approvals" is NOT a reason to stop while unlocked images remain.
+
 The whole plan is already written. You do not need new instructions from the user between batches. The loop:
 
 ## NON-NEGOTIABLE: parallel generation, but EVERY IMAGE STAYS SEPARATE

@@ -1,11 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-vi.mock('phaser', () => ({ default: { Math: { Between: (a: number, _b: number) => a } } }));
-
 import { launch } from '../src/systems/Knockback';
 import { applyLoadout, findItem, itemsFor, ITEMS, DEFAULT_LOADOUT, SLOTS } from '../src/data/items';
 import { getLoadout, setLoadout, resetLoadout } from '../src/systems/Loadout';
 import { Spawner } from '../src/systems/Spawner';
+import { Rng } from '../src/sim/rng';
 import { heroes } from '../src/data/heroes';
 import type { MoveDef } from '../src/data/types';
 
@@ -129,7 +128,7 @@ describe('Spawner', () => {
   const cfg = { firstDelay: 1000, interval: 5000, count: 2, max: 3 };
   it('waits firstDelay, then spawns count', () => {
     const spawned: number[] = [];
-    const s = new Spawner(cfg, (x) => spawned.push(x), () => spawned.length, [100, 200]);
+    const s = new Spawner(cfg, (x) => spawned.push(x), () => spawned.length, [100, 200], new Rng(1));
     s.update(900);
     expect(spawned.length).toBe(0);
     s.update(100);
@@ -138,7 +137,7 @@ describe('Spawner', () => {
   });
   it('respects interval and max alive', () => {
     const spawned: number[] = [];
-    const s = new Spawner(cfg, (x) => spawned.push(x), () => spawned.length, [100, 200]);
+    const s = new Spawner(cfg, (x) => spawned.push(x), () => spawned.length, [100, 200], new Rng(1));
     s.update(1000);
     s.update(4999);
     expect(spawned.length).toBe(2);

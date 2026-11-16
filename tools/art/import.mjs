@@ -8,7 +8,7 @@
 // magenta, or a plain cream/white backdrop). Each frame is scaled by ONE shared factor, feet-aligned to the
 // bottom of the frame, centred on the feet, palette-limited, and written as an Aseprite-style PNG + JSON.
 import sharp from 'sharp';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -20,8 +20,14 @@ const num = (k, d) => (opt[k] !== undefined ? Number(opt[k]) : d);
 
 const DEFAULT_DUR = { idle: 200, run: 80, jump: 100, fall: 100, melee: 100, special: 110, hurt: 100, launch: 100, land: 70, melee2: 90, ultimate: 120, respawn: 140, ko: 200, taunt: 160, victory: 180 };
 
+async function padContained(file) {
+  const { width } = await sharp(file).metadata();
+  const m = Math.round((1024 - width) / 2);
+  return sharp(file).flatten({ background: '#ff00ff' }).extend({ top: m, bottom: 1024 - width - m, left: m, right: 1024 - width - m, background: '#ff00ff' }).png().toBuffer();
+}
+
 async function load(path, crop) {
-  let s = sharp(path).ensureAlpha();
+  let s = sharp(path).ensureAlpha(); // path may be a Buffer
   if (crop) {
     const [left, top, width, height] = crop.split(',').map(Number);
     s = s.extract({ left, top, width, height });
@@ -319,59 +325,137 @@ async function runFx() {
 
 /**
  * One-image-per-frame import (Codex workflow). Reads art-raw/<dir>/<tag>_<n>.png (1024x1024, magenta bg, feet on y=960,
- * body centre x=512, same scale every frame), removes the background, scales the WHOLE canvas by ONE factor (taken from
- * idle_1's height so --height is the standing height in game pixels) and writes the usual <id>.png + <id>.json strip.
- *   node tools/art/import.mjs frames --dir art-raw/heroes/zac --id zac --frame 128 --height 52 \
- *        --tags idle:4,run:6,jump:1,fall:1,melee:4,special:3,hurt:2,launch:1
+ * body centre x=512), removes the background and writes a packed, trimmed atlas <id>.webp + Aseprite-style <id>.json.
+ * Every frame is a logical --frame square (the whole 1024 canvas at --scale); only the drawn part is stored.
+ *   node tools/art/import.mjs frames --dir art-raw/heroes/zac --id zac --frame 512 --scale 0.5 --tags idle:4,run:6,... --fix tools/art/rescale.json
+ * --fix: per-frame size factors (tools/art/rescale.json, made with measure.mjs + heads.mjs). Codex draws frames at different sizes;
+ *        each frame is resized by its factor (times the character's "_all" factor) so the head is the same size in every pose.
+ *        Grounded frames are resized around their own lowest pixel and stood on the ground line; airborne ones around the ground point.
  */
 async function runFrames() {
-  const F = num('frame', 128);
-  const standH = num('height', 52);
-  const tags = opt.tags.split(',').map((t) => { const [name, n] = t.split(':'); return { name, n: Number(n) }; });
+  const F = num('frame', 512);
+  const S = num('scale', 0.5); // game art px per raw px
+  // tag syntax: name:n, or name=file:n when the raw files use another prefix (run=walk:4 reads walk_1..4.png),
+  // or name=file@start:n to start at another frame (apex=jump@2:1 reads jump_2.png only)
+  let tags = opt.tags.split(',').map((t) => {
+    const [left, n] = t.split(':');
+    const [name, src] = left.split('=');
+    const [file, start] = (src ?? name).split('@');
+    return { name, file, start: Number(start ?? 1), n: Number(n) };
+  });
+  // --skip victory_2,ultimate_4 : raw frames that are wrong art (leave them out; the tag just gets shorter, an empty tag is dropped)
+  const skip = (opt.skip ?? '').split(',').filter(Boolean);
+  for (const t of tags) { t.ks = Array.from({ length: t.n }, (_, i) => i + t.start).filter((k) => !skip.includes(`${t.file}_${k}`)); t.n = t.ks.length; }
+  tags = tags.filter((t) => t.n > 0);
   const total = tags.reduce((n, t) => n + t.n, 0);
-  const dir = opt.dir.startsWith('/') || /^[A-Za-z]:/.test(opt.dir) ? opt.dir : `${root}${opt.dir}`;
-  const imgs = [];
-  for (const t of tags) for (let k = 1; k <= t.n; k++) {
-    const img = await load(`${dir}/${t.name}_${k}.png`);
+  const abs = (p) => (p.startsWith('/') || /^[A-Za-z]:/.test(p) ? p : `${root}${p}`);
+  const dir = abs(opt.dir);
+  const fixAll = opt.fix ? JSON.parse(readFileSync(abs(opt.fix), 'utf8')) : {};
+  const fix = fixAll[opt.id] ?? {}, all = fixAll._all?.[opt.id] ?? 1;
+  const AIR = ['jump', 'apex', 'fall', 'launch', 'aspecial'];
+  const SNAP = 70; // grounded frames whose lowest pixel is within this many raw px of the ground line are stood on it
+  const cells = [], warnings = [];
+  for (const t of tags) for (const k of t.ks) {
+    const base = `${dir}/${t.file}_${k}`;
+    const img = await load(existsSync(`${base}_contained.png`) ? await padContained(`${base}_contained.png`) : `${base}.png`); // Codex "_contained" = re-done frame that fits the canvas margin
     removeBg(img, [255, 0, 255], num('tol', 38));
-    imgs.push({ img, tag: t.name, k, bb: bbox(img) });
+    const bb = bbox(img), name = `${t.file}_${k}`;
+    if (!bb) { warnings.push(`${name} is empty`); cells.push({ name, tag: t.name, art: null }); continue; }
+    const f = (fix[name] ?? 1) * all, k1024 = 1024 / img.h;
+    const bottom = (bb.y + bb.h) * k1024;
+    const air = AIR.includes(t.name);
+    const ay = air ? 960 : bottom; // raw point that stays put while resizing
+    const ty = air || Math.abs(bottom - 960) <= SNAP ? 960 : bottom; // where that point ends up
+    // one resample straight from the raw image: crop to the drawn part, resize by factor x scale
+    const z = f * S * k1024; // raw px -> 1024-canvas px (k1024) -> game px; frames not drawn on a 1024 canvas (lachlan run_3 is 1254) must be normalised, not inflated
+    const sw = Math.max(1, Math.round(bb.w * z)), sh = Math.max(1, Math.round(bb.h * z));
+    const scaled = await scale(sub(img, bb), sw, sh, true);
+    const x = Math.round(F / 2 + (bb.x * k1024 - 512) * f * S);
+    const y = Math.round(F - F / 128 + ((bb.y * k1024 - ay) * f + (ty - 960)) * S); // soles 1/128 of a frame above the bottom edge (2px at 256)
+    if (x < 0 || y < 0 || x + sw > F || y + sh > F) warnings.push(`${name} does not fit the frame at x${f.toFixed(2)} (clipped)`);
+    if (!air && Math.abs(bottom - 960) > SNAP && !['ultimate', 'special', 'scharge', 'ko', 'respawn', 'intro', 'defeat'].includes(t.name)) warnings.push(`${name}: lowest pixel is ${Math.round(bottom - 960)}px from the ground line, left as drawn`);
+    cells.push({ name, tag: t.name, art: scaled, x, y, f });
   }
-  const ref = imgs.find((f) => f.tag === 'idle' && f.k === 1) ?? imgs[0];
-  const s = opt.scale ? Number(opt.scale) : standH / ref.bb.h; // one scale for the whole character (--scale = game px per source px)
-  const cols = num('cols', 8), rows = Math.ceil(total / cols);
-  const strip = blank(cols * F, rows * F);
-  const warnings = [];
-  for (let i = 0; i < imgs.length; i++) {
-    const { img, tag, k, bb } = imgs[i];
-    if (!bb) { warnings.push(`${tag}_${k} is empty`); continue; }
-    const nw = Math.round(img.w * s), nh = Math.round(img.h * s);
-    const scaled = await scale(img, nw, nh, opt.soft !== '0');
-    const ox = Math.round(F / 2 - (img.w / 2) * s), oy = Math.round(F - 2 - (960 * img.h / 1024) * s);
-    const f = blank(F, F);
-    blit(f, scaled, ox, oy);
-    const fb = bbox(f);
-    if (!fb || fb.x <= 0 || fb.y <= 0 || fb.x + fb.w >= F) warnings.push(`${tag}_${k} is clipped by the frame: scale/position drift, redraw smaller or lower --height`);
-    const grounded = !['jump', 'fall', 'launch', 'ultimate', 'special', 'ko'].includes(tag);
-    if (grounded && Math.abs((bb.y + bb.h) * 1024 / img.h - 960) > 28) warnings.push(`${tag}_${k}: feet are ${Math.round((bb.y + bb.h) * 1024 / img.h - 960)}px from the y=960 baseline (canvas px)`);
-    if (Math.abs(bb.h / ref.bb.h - 1) > 0.18 && grounded && tag !== 'melee' && tag !== 'land') warnings.push(`${tag}_${k}: height is ${Math.round((bb.h / ref.bb.h) * 100)}% of idle_1: scale drift`);
-    blit(strip, f, (i % cols) * F, Math.floor(i / cols) * F);
+  // clip to the logical frame, then shelf-pack (tallest first) with a 2px gap so linear filtering never bleeds a neighbour in
+  for (const c of cells) {
+    if (!c.art) { c.art = blank(1, 1); c.x = 0; c.y = 0; continue; }
+    const x0 = Math.max(0, c.x), y0 = Math.max(0, c.y), x1 = Math.min(F, c.x + c.art.w), y1 = Math.min(F, c.y + c.art.h);
+    if (x0 !== c.x || y0 !== c.y || x1 !== c.x + c.art.w || y1 !== c.y + c.art.h) { c.art = sub(c.art, { x: x0 - c.x, y: y0 - c.y, w: x1 - x0, h: y1 - y0 }); c.x = x0; c.y = y0; }
   }
-  await savePng(strip, `${root}public/assets/sprites/${opt.id}.png`, num('colours', 256));
+  const W = num('atlas', 2048), GAP = 2;
+  let px = GAP, py = GAP, rowH = 0;
+  for (const c of [...cells].sort((p, q) => q.art.h - p.art.h)) {
+    if (px + c.art.w + GAP > W) { px = GAP; py += rowH + GAP; rowH = 0; }
+    c.ax = px; c.ay = py; px += c.art.w + GAP; rowH = Math.max(rowH, c.art.h);
+  }
+  const H = py + rowH + GAP;
+  const atlas = blank(W, H);
+  for (const c of cells) blit(atlas, c.art, c.ax, c.ay);
+  mkdirSync(`${root}public/assets/sprites`, { recursive: true });
+  await sharp(Buffer.from(atlas.d), { raw: { width: W, height: H, channels: 4 } }).webp({ quality: num('quality', 84), alphaQuality: 100, effort: 5 }).toFile(`${root}public/assets/sprites/${opt.id}.webp`);
   const durOverride = opt.dur ? Object.fromEntries(opt.dur.split(',').map((p) => p.split(':'))) : {};
   const frames = [], frameTags = [];
   let n = 0;
   for (const t of tags) {
     frameTags.push({ name: `${opt.id}:${t.name}`, from: n, to: n + t.n - 1, direction: 'forward' });
-    for (let k = 0; k < t.n; k++, n++)
-      frames.push({ filename: String(n), frame: { x: (n % cols) * F, y: Math.floor(n / cols) * F, w: F, h: F }, rotated: false, trimmed: false, spriteSourceSize: { x: 0, y: 0, w: F, h: F }, sourceSize: { w: F, h: F }, duration: Number(durOverride[t.name] ?? DEFAULT_DUR[t.name] ?? 100) });
+    for (let k = 0; k < t.n; k++, n++) {
+      const c = cells[n];
+      frames.push({ filename: String(n), frame: { x: c.ax, y: c.ay, w: c.art.w, h: c.art.h }, rotated: false, trimmed: true, spriteSourceSize: { x: c.x, y: c.y, w: c.art.w, h: c.art.h }, sourceSize: { w: F, h: F }, duration: Number(durOverride[t.name] ?? DEFAULT_DUR[t.name] ?? 100) });
+    }
   }
-  writeFileSync(`${root}public/assets/sprites/${opt.id}.json`, JSON.stringify({ frames, meta: { app: 'tran-tech-brawl/tools/art/import.mjs', version: '1', image: `${opt.id}.png`, format: 'RGBA8888', size: { w: strip.w, h: strip.h }, scale: '1', frameTags } }));
-  await preview(strip, `${root}docs/art/${opt.id}-preview.png`, 1);
-  console.log(`frames ${opt.id}: ${total} frames, scale ${s.toFixed(4)} (idle_1 is ${ref.bb.h}px tall in the source)`);
+  writeFileSync(`${root}public/assets/sprites/${opt.id}.json`, JSON.stringify({ frames, meta: { app: 'tran-tech-brawl/tools/art/import.mjs', version: '2', image: `${opt.id}.webp`, format: 'RGBA8888', size: { w: W, h: H }, scale: '1', frameTags } }));
+  // preview: every logical frame on a grid at half size, with the ground line, so size and footing can be judged at a glance
+  const P = 256, cols = 8, kp = P / F, comp = [];
+  for (let i = 0; i < cells.length; i++) {
+    const c = cells[i], gx = (i % cols) * P, gy = Math.floor(i / cols) * P;
+    const w = Math.max(1, Math.round(c.art.w * kp)), h = Math.max(1, Math.round(c.art.h * kp));
+    comp.push({ input: await sharp(Buffer.from(c.art.d), { raw: { width: c.art.w, height: c.art.h, channels: 4 } }).resize(w, h).png().toBuffer(), left: gx + Math.min(P - w, Math.round(c.x * kp)), top: gy + Math.min(P - h, Math.round(c.y * kp)) });
+    comp.push({ input: Buffer.from(`<svg width="${P}" height="${P}" xmlns="http://www.w3.org/2000/svg"><line x1="0" x2="${P}" y1="${P - 2}" y2="${P - 2}" stroke="#fff" stroke-opacity="0.25"/><text x="4" y="13" font-family="Arial" font-size="11" fill="#cbd5e1">${c.name}${c.f && Math.abs(c.f - 1) > 0.005 ? ' x' + c.f.toFixed(2) : ''}</text></svg>`), left: gx, top: gy });
+  }
+  await sharp({ create: { width: cols * P, height: Math.ceil(cells.length / cols) * P, channels: 3, background: { r: 58, g: 66, b: 86 } } }).composite(comp).png().toFile(`${root}docs/art/${opt.id}-preview.png`);
+  console.log(`frames ${opt.id}: ${total} frames, atlas ${W}x${H}`);
   for (const w of warnings) console.warn('WARN', w);
 }
 
+/**
+ * Single-pose stand-in from a design turnaround (until the hero's animation frames exist): finds the full-body figures
+ * (left to right), takes the --pick'th one (default 2 = side view), optional --flip 1 so it faces right, scales it to
+ * --height game px and writes a one-frame <id>.png + <id>.json tagged idle. Fighter.ts then leans/tumbles it in code.
+ *   node tools/art/import.mjs pose --in art-raw/heroes/aiden/sheet_turnaround.png --id aiden --frame 160 --height 96
+ */
+async function runPose() {
+  const F = num('frame', 160);
+  const standH = num('height', 96);
+  const src = await load(opt.in, opt.crop);
+  removeBg(src, [255, 0, 255], num('tol', 38));
+  const segs = segment(src, num('gap', 10), num('rowgap', 8)).flat();
+  const tallest = Math.max(...segs.map((r) => r.h));
+  const bodies = segs.filter((r) => r.h >= tallest * 0.8).sort((a, b) => a.x - b.x);
+  const r = bodies[num('pick', 2) - 1];
+  if (!r) throw new Error(`only ${bodies.length} full-body figures found; adjust --pick or --gap`);
+  let art = sub(src, r);
+  if (opt.flip === '1') {
+    const f = blank(art.w, art.h);
+    for (let y = 0; y < art.h; y++) for (let x = 0; x < art.w; x++)
+      for (let c = 0; c < 4; c++) f.d[(y * art.w + x) * 4 + c] = art.d[(y * art.w + art.w - 1 - x) * 4 + c];
+    art = f;
+  }
+  const s = standH / art.h;
+  const scaled = await scale(art, Math.max(1, Math.round(art.w * s)), standH, true);
+  if (scaled.w > F) throw new Error(`pose is ${scaled.w}px wide, wider than the ${F}px frame; lower --height`);
+  const frame = blank(F, F);
+  blit(frame, scaled, Math.round((F - scaled.w) / 2), F - 2 - standH);
+  await savePng(frame, `${root}public/assets/sprites/${opt.id}.png`, num('colours', 256));
+  writeFileSync(`${root}public/assets/sprites/${opt.id}.json`, JSON.stringify({
+    frames: [{ filename: '0', frame: { x: 0, y: 0, w: F, h: F }, rotated: false, trimmed: false, spriteSourceSize: { x: 0, y: 0, w: F, h: F }, sourceSize: { w: F, h: F }, duration: 200 }],
+    meta: { app: 'tran-tech-brawl/tools/art/import.mjs', version: '1', image: `${opt.id}.png`, format: 'RGBA8888', size: { w: F, h: F }, scale: '1', frameTags: [{ name: `${opt.id}:idle`, from: 0, to: 0, direction: 'forward' }] },
+  }));
+  await preview(frame, `${root}docs/art/${opt.id}-pose-preview.png`, 2);
+  console.log(`pose ${opt.id}: figure ${num('pick', 2)} of ${bodies.length} (${r.w}x${r.h} source) -> ${scaled.w}x${standH} in ${F}x${F}`);
+}
+
 if (mode === 'frames') await runFrames();
+else if (mode === 'pose') await runPose();
 else if (mode === 'portrait') await runPortrait();
 else if (mode === 'image') await runImage();
 else if (mode === 'fx') await runFx();

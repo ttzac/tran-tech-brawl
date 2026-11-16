@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
+import { fitUi } from '../ui/hires';
 import { heroes } from '../data/heroes';
-import { ART, textureKey } from '../data/art';
+import { ART, itemIconKey, textureKey } from '../data/art';
 import {
   DEFAULT_LOADOUT,
   RARITIES,
@@ -67,6 +68,7 @@ export class ManagerScene extends Phaser.Scene {
   }
 
   create(data?: { heroId?: string }): void {
+    fitUi(this);
     this.heroIdx = Math.max(0, heroes.findIndex((h) => h.id === data?.heroId));
     this.slotIdx = 0;
     this.hover = null;
@@ -210,6 +212,13 @@ export class ManagerScene extends Phaser.Scene {
     return t;
   }
 
+  /** Item icon (Codex art, falls back to the emoji) centred at x,y. */
+  private icon(slot: Slot, it: ItemDef | undefined, x: number, y: number, size: number, bag: Phaser.GameObjects.GameObject[] = this.dyn): void {
+    const key = it ? itemIconKey(slot, it.id) : '';
+    if (key && this.textures.exists(key)) bag.push(this.add.image(x, y, key).setDisplaySize(size, size));
+    else this.text(x - size / 2, y - size / 2 - 2, it?.icon ?? '➖', Math.round(size * 0.85), '#ffffff', false, bag);
+  }
+
   private portrait(h: FighterDef, x: number, y: number, scale: number): void {
     const key = `portrait_${h.id}`;
     if (this.textures.exists(key)) {
@@ -231,18 +240,18 @@ export class ManagerScene extends Phaser.Scene {
     this.loadout = getLoadout(hero.id);
 
     // ---- left: hero list ----
-    this.text(30, 84, 'FIGHTERS', 12, '#64748b');
+    this.text(30, 76, 'FIGHTERS', 12, '#64748b');
     heroes.forEach((h, i) => {
-      const y = 126 + i * 104;
+      // compact rows so 11 fighters fit the 540px screen
+      const y = 110 + i * 37;
       const sel = i === this.heroIdx;
-      const card = this.put(this.add.rectangle(130, y, 200, 94, 0x131a2b).setStrokeStyle(3, sel ? 0x60a5fa : 0x334155).setInteractive({ useHandCursor: true }));
+      const card = this.put(this.add.rectangle(130, y, 200, 34, 0x131a2b).setStrokeStyle(2, sel ? 0x60a5fa : 0x334155).setInteractive({ useHandCursor: true }));
       card.on('pointerdown', () => this.pickHero(i));
-      this.portrait(h, 66, y, 0.72);
-      this.text(112, y - 32, h.name, 15, sel ? '#ffffff' : '#cbd5e1', true);
-      this.text(112, y - 12, h.role, 11, '#64748b');
+      this.portrait(h, 48, y, 0.32);
+      this.text(68, y - 14, h.name, 13, sel ? '#ffffff' : '#cbd5e1', true);
+      this.text(68, y + 1, h.role, 10, '#64748b');
       const l = getLoadout(h.id);
-      const icons = SLOTS.map((s) => findItem(s, l[s])?.icon ?? '➖').join(' ');
-      this.text(112, y + 12, icons, 16, '#ffffff');
+      SLOTS.forEach((s, k) => this.icon(s, findItem(s, l[s]), 176 + k * 17, y, 15));
     });
 
     // ---- centre: big portrait + stats ----
@@ -278,8 +287,8 @@ export class ManagerScene extends Phaser.Scene {
       const box = this.put(this.add.rectangle(x + 47, 487, 94, 30, 0x131a2b).setStrokeStyle(2, p ? 0x60a5fa : 0x334155).setInteractive({ useHandCursor: true }));
       box.on('pointerdown', (ptr: Phaser.Input.Pointer) => this.preset(i, ptr.event.shiftKey || ptr.rightButtonDown()));
       this.text(x + 4, 474, `${i + 4}`, 10, '#facc15');
-      const label = p ? SLOTS.map((s) => findItem(s, p[s])?.icon ?? '➖').join('') : 'empty';
-      this.text(x + 18, p ? 476 : 479, label, p ? 14 : 11, p ? '#ffffff' : '#475569');
+      if (p) SLOTS.forEach((s, k) => this.icon(s, findItem(s, p[s]), x + 26 + k * 20, 489, 18));
+      else this.text(x + 18, 479, 'empty', 11, '#475569');
     });
 
     // ---- right: slots ----
@@ -290,8 +299,8 @@ export class ManagerScene extends Phaser.Scene {
       const row = this.put(this.add.rectangle(765, y, 330, 46, 0x131a2b).setStrokeStyle(3, sel ? 0xfacc15 : 0x334155).setInteractive({ useHandCursor: true }));
       row.on('pointerdown', () => this.pickSlot(i));
       this.text(612, y - 19, `${i + 1}  ${SLOT_LABEL[slot]}`, 10, sel ? '#facc15' : '#64748b');
-      this.text(612, y - 4, it?.icon ?? '➖', 20, '#ffffff');
-      this.text(646, y - 8, it?.name ?? 'Empty', 15, '#ffffff', true);
+      this.icon(slot, it, 628, y + 4, 30);
+      this.text(652, y - 8, it?.name ?? 'Empty', 15, '#ffffff', true);
       if (it) this.text(870, y - 19, RARITY_LABEL[it.rarity], 9, hex(RARITY_COLOR[it.rarity]));
     });
 
@@ -320,7 +329,7 @@ export class ManagerScene extends Phaser.Scene {
         this.hover = null;
         this.renderCompare();
       });
-      this.text(x - 50, y - 12, o.icon, 20, '#ffffff');
+      this.icon(slot, o, x - 36, y, 28);
       const nm = this.text(x - 22, y - 14, o.name, 10, equipped ? '#facc15' : '#e2e8f0', equipped);
       nm.setWordWrapWidth(70);
     });
@@ -343,7 +352,8 @@ export class ManagerScene extends Phaser.Scene {
     const a = applyLoadout(hero, against);
     const b = applyLoadout(hero, after);
     const title = this.hover ? (this.hover.id === this.loadout[slot] ? 'EQUIPPED' : 'VS EQUIPPED') : 'EQUIPPED VS EMPTY';
-    this.text(602, 414, `${target.icon} ${target.name}`, 13, '#ffffff', true, bag);
+    this.icon(slot, target, 610, 422, 18, bag);
+    this.text(624, 414, target.name, 13, '#ffffff', true, bag);
     this.text(930, 416, `${RARITY_LABEL[target.rarity]} · ${title}`, 9, hex(RARITY_COLOR[target.rarity]), false, bag).setOrigin(1, 0);
     this.text(602, 431, target.desc, 10, '#94a3b8', false, bag).setWordWrapWidth(320);
     let n = 0;

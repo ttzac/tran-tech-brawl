@@ -7,7 +7,7 @@ import Phaser from 'phaser';
  *   Sfx.bindFight(fightEvents)   // subscribes the 'sfx:*' contract, returns an unsubscribe fn
  * M toggles mute (persisted in localStorage). The context is resumed on first key/click.
  */
-export type SfxName = 'swing' | 'special' | 'hit' | 'jump' | 'land' | 'ko' | 'move' | 'select' | 'win' | 'lose';
+export type SfxName = 'swing' | 'special' | 'hit' | 'jump' | 'land' | 'ko' | 'move' | 'select' | 'win' | 'lose' | 'pickup' | 'combo' | 'ledge' | 'crit' | 'crate' | 'boom' | 'streak';
 
 const KEY = 'ttb.muted';
 const MASTER = 0.22;
@@ -100,7 +100,7 @@ function hiss(dur: number, vol: number, f0: number, f1: number, kind: BiquadFilt
 }
 
 /** Per-kind and global caps inside a 100 ms window (10 fighters can spam events). */
-const CAPS: Record<string, number> = { swing: 2, special: 2, hit: 3, jump: 2, land: 2, ko: 2 };
+const CAPS: Record<string, number> = { swing: 2, special: 2, hit: 3, jump: 2, land: 2, ko: 2, combo: 1, ledge: 1, crit: 1 };
 function allowed(name: string): boolean {
   const now = performance.now();
   const total = (stamps['*'] ??= []);
@@ -200,6 +200,38 @@ export const Sfx = {
         tone(1047, 1047, 0.5, 'square', 0.14, 0.5);
         tone(784, 784, 0.5, 'triangle', 0.14, 0.5);
         break;
+      case 'pickup':
+        // power-up fanfare: quick rising arpeggio
+        [392, 523, 659, 784, 1047].forEach((f, i) => tone(f, f * 1.01, 0.1, 'square', 0.13, i * 0.045));
+        tone(1568, 1568, 0.25, 'triangle', 0.1, 0.24);
+        break;
+      case 'combo': {
+        // each hit in the chain rings a little higher (pentatonic climb, capped)
+        const steps = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21];
+        const f = 523 * Math.pow(2, steps[Math.min(steps.length - 1, Math.max(0, arg - 2))] / 12);
+        tone(f, f * 1.02, 0.12, 'square', 0.12);
+        tone(f * 2, f * 2, 0.09, 'triangle', 0.07, 0.02);
+        break;
+      }
+      case 'ledge':
+        tone(1400, 900, 0.05, 'triangle', 0.14);
+        hiss(0.05, 0.2, 4000, 1500, 'highpass');
+        break;
+      case 'crit':
+        tone(1200, 300, 0.2, 'sawtooth', 0.22);
+        hiss(0.14, 0.35, 5000, 800, 'highpass');
+        break;
+      case 'crate':
+        tone(760, 380, 0.14, 'triangle', 0.1);
+        break;
+      case 'boom':
+        hiss(0.45, 0.7, 1800, 80, 'lowpass');
+        tone(90, 28, 0.5, 'sine', 0.7);
+        break;
+      case 'streak':
+        [523, 659, 784].forEach((f, i) => tone(f, f, 0.14, 'square', 0.15, i * 0.07));
+        tone(1047, 1047, 0.3, 'square', 0.15, 0.24);
+        break;
       case 'lose':
         [392, 370, 330, 262].forEach((f, i) => tone(f, f * 0.97, 0.22, 'sawtooth', 0.13, i * 0.2));
         tone(131, 98, 0.7, 'triangle', 0.2, 0.8);
@@ -216,6 +248,13 @@ export const Sfx = {
       'sfx:jump': () => Sfx.play('jump'),
       'sfx:land': (fall: number) => Sfx.play('land', fall),
       'sfx:ko': () => Sfx.play('ko'),
+      'sfx:pickup': () => Sfx.play('pickup'),
+      'sfx:combo': (n: number) => Sfx.play('combo', n),
+      'sfx:ledge': () => Sfx.play('ledge'),
+      'sfx:crit': () => Sfx.play('crit'),
+      'sfx:crate': () => Sfx.play('crate'),
+      'sfx:boom': () => Sfx.play('boom'),
+      'sfx:streak': () => Sfx.play('streak'),
     };
     for (const [k, fn] of Object.entries(h)) ev.on(k, fn);
     return () => {

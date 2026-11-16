@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
+import { fitUi } from '../ui/hires';
 import { touchState, resetTouchState } from './touchState';
 
 interface Btn {
-  key: 'jump' | 'attack' | 'special' | 'drop';
+  key: 'jump' | 'attack' | 'special' | 'ultimate' | 'drop';
   x: number;
   y: number;
   r: number;
@@ -26,6 +27,7 @@ export class TouchControls extends Phaser.Scene {
   }
 
   create(): void {
+    fitUi(this);
     this.input.addPointer(3);
     this.stickId = -1;
     this.stickDown = false;
@@ -40,6 +42,7 @@ export class TouchControls extends Phaser.Scene {
       { key: 'jump', x: 880, y: 400, r: 38, label: 'JUMP', color: 0x4caf50 },
       { key: 'attack', x: 790, y: 460, r: 38, label: 'HIT', color: 0xef5350 },
       { key: 'special', x: 800, y: 350, r: 32, label: 'SPEC', color: 0x42a5f5 },
+      { key: 'ultimate', x: 700, y: 340, r: 30, label: 'ULT', color: 0xffc857 },
       { key: 'drop', x: 250, y: 490, r: 28, label: 'DROP', color: 0xffca28 },
     ];
     for (const b of this.btns) {

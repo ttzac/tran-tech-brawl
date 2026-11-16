@@ -13,25 +13,38 @@
 - Verify before saying done: `npm run build`, then run the game (`npm run dev`, port 5173) and look at it.
 
 ## Commands
-- `npm run dev` start (http://localhost:5173) · `npm run build` typecheck + production build · `npm test` unit + asset-integrity tests (run after importing art)
+- `npm run dev` start (http://localhost:5173; also serves multiplayer signalling at ws://localhost:5173/signal; add `-- --host` to test from another PC on the LAN) · `npm run build` typecheck + production build · `npm test` unit + asset-integrity tests (run after importing art)
 - `node tools/balance/sim.mts` balance simulation (hits-to-KO, abstract 5v5 fights)
-- `node tools/art/import.mjs ...` import art (see `ART_GUIDE.md`)
+- `node tools/art/import-all.mjs [group] [ids]` re-import all Codex art with the right settings (groups: heroes, herofx, portraits, globalfx, enemies, ui). `node tools/art/import.mjs ...` is the single-asset tool underneath (see `ART_GUIDE.md`)
 
 ## Where things are (data-driven: add content by editing data, not engine code)
 - `src/data/heroes.ts`, `bosses.ts`, `stages.ts`: characters, bosses (+ minions, waves, patterns), stages
+- Dungeon Crawl: `src/data/dungeon.ts` (relics, room kinds, room modifiers, run state shape), `src/sim/crawl.ts` (seeded rules: floor map, room building, rewards, run progress; no Phaser), scenes Map → Fight → Loot → Map ... → Result
 - `src/data/items.ts`: weapons, items, powerups and the stat maths (`applyLoadout`)
 - `src/data/art.ts`: which characters have real art, effect sizes, stage images
-- `src/entities/Fighter.ts` (movement, hits, animation state), `Player.ts`, `Bot.ts`; `src/ai/` (states, boss patterns)
-- `src/systems/` Combat (hitboxes, projectiles, effects), Knockback, Spawner, Loadout (saved gear + ally loadouts), Sfx (synthesised sound; Fight scene emits `sfx:*` events that HUDScene plays)
-- `src/input/` touch overlay + shared touch state; Player.ts reads keyboard + gamepad + touch
-- `src/scenes/` Boot, Menu, Manager (character manager), Fight, HUD, Result
+- **Simulation (no Phaser imports allowed, runs in tests / later on a network host):** `src/sim/World.ts` (the whole fight: setup, tick order, blast KOs, win/lose), `sim/kinematics.ts` (fixed 60 Hz tick, gravity, platform collision), `sim/rng.ts` (seeded RNG: use `world.rng`, never `Math.random`, for anything gameplay), `sim/events.ts` (what the view hears about); `src/entities/Fighter.ts` (movement, hits, damage, stocks), `Bot.ts`; `src/ai/` (states, boss patterns); `src/systems/` Combat (hitboxes, projectiles), Knockback, Spawner
+- **View:** `src/view/FighterView.ts` (sprite, animation, tint, lean), `CombatView.ts` (slashes, projectile sprites, fx); `src/scenes/FightScene.ts` steps the World, plays its events (emits `sfx:*` that HUDScene plays) and syncs views
+- `src/systems/` also: Loadout (saved gear + ally loadouts), Sfx (synthesised sound)
+- **Network** (`src/net/`, see `docs/MULTIPLAYER.md`): `protocol.ts` wire formats, `link.ts` Link/sessions/fake conditions, `rtc.ts` WebRTC, `local.ts` two-tab BroadcastChannel, `signalRoom.ts` signalling logic (dev server: `tools/net/viteSignal.ts`; prod: `server/signal/` Cloudflare Worker). Dev console: `__net.host()`, `__net.join(code)`, `__net.cond({lag, jitter, loss})`, `__net.stream()`
+- `src/input/` PlayerInput (keyboard + gamepad + touch, latched per tick), touch overlay + shared touch state
+- `src/scenes/` Boot, Menu, Manager (character manager), Lobby (online), Fight (solo / host / client modes), HUD, Result
+- Online game flow: `net/session.ts` holds the tab's one NetHost or NetClient across scenes and switches scenes on network events (`goto`). Host: FightScene calls `host.beforeTick()` / `world.step()` / `host.afterTick()`. Client: never steps its whole World; `client.sendInput()` per tick (also predicts the local fighter), `client.sync()` per frame (reconciles it, interpolates everyone else). `net/background.ts` keeps a hidden host tab ticking
 - `public/assets/` sprites, portraits, stages, fx
 
 ## Conventions and gotchas
 - Windows path has spaces (`OneDrive - TranTech Computers`): always quote paths. URL-derived paths break (use `fileURLToPath`).
-- Hero sheets: `node tools/art/import.mjs frames --dir art-raw/heroes/<id> --id <id> --frame 160 --scale 0.15 --tags idle:4,run:6,jump:1,fall:1,melee:4,special:3,hurt:2,launch:1 --dur idle:180,run:70,melee:80,special:100,hurt:110` then `... portrait --in art-raw/heroes/<id>/portrait_neutral.png --id <id> --size 192 --colours 256 --soft 1`; add the id to `ART` (smooth: true) and `PORTRAITS`; set `windup` to the contact/release frame time in `heroes.ts`.
+- Hero sheets: `node tools/art/import-all.mjs heroes <id>` (512px logical frames = raw at 0.5, trimmed + packed into `<id>.webp`, all 15 tags), then `... portraits <id>` and `... herofx <id>`. A new hero also needs an `ART` entry (`frame: 512`, `res: 16 / 5`, smooth), `HERO_FX` and `PORTRAITS` in `src/data/art.ts`, and `windup` set to the contact/release frame time in `heroes.ts`.
+- Frame sizes: Codex draws poses at different sizes. `tools/art/rescale.json` has one factor per raw frame so the head is the same size in every pose. For new or redrawn art: `node tools/art/measure.mjs heroes/<id>`, `node tools/art/heads.mjs --fit <id>`, look at `docs/art/measure/<id>-heads.jpg` (every head should match idle_1; open mouths read small, so fix those by hand and add them to `_lock`), then re-import.
 - Characters with art: sheet id = fighter `id`; tags named `<id>:<state>`. Feet on the bottom edge of the frame, facing right.
-- Camera zoom is 0.7 (non-integer), which blurs pixel art slightly. See the render-scale decision in `TODO.md`.
+- Camera zoom is 1.2 (`ZOOM` in `FightScene.ts`; raised from 0.7 on 2026-11-06 so characters read bigger; raise/lower it to resize everyone). See the render-scale decision in `TODO.md`.
+- Render is 2x: canvas 1920x1080, logical coords stay 960x540. Every scene calls `fitUi(this)` (src/ui/hires.ts) in create/preload; FightScene zoom is `ZOOM * RES`; `installCrispText()` renders all Text at 2x. New scenes must call `fitUi`.
 - Keep the bundle light; art and audio are budgeted separately.
 - Testing in the browser pane: a hidden pane throttles the game to about 1 fps. Step it manually from the console in dev (`__game.step(performance.now(), 16.667)` in a loop) instead of waiting on real time; `window.__game` exists in dev only.
-- This is not a git repo yet.
+- Sim/view split: gameplay state lives on the sim `Fighter` (x/y = sprite centre, `body` = collision box); views only read it. New gameplay goes in the sim and reaches the screen through state or a `SimEvent`.
+- Testing multiplayer in the browser pane: open a second tab (tabs_create + navigate to localhost:5173). Real flow: `__game.scene.getScene('Menu').online('host')` in one tab, `.online('join', CODE)` in the other, drive lobby keys with `getScene('Lobby').onKey({ key: 'Enter' })`. Hidden tabs get no animation frames: step each tab from a timer (`setInterval(() => __game.step(now, dt), 16)`). Raw links only: `__net.host()` / `__net.join(code)`.
+- Humans in a World are `Bot`s with `manual = true` (so the AI can take over a dropped player): never use `instanceof Bot` to mean "AI", check `manual`.
+- If port 5173 is taken by another session, the preview config `tran-tech-brawl-5174` (in `../.claude/launch.json`) serves the game on 5174. Background tabs in the browser pane get no animation frames and report `document.hidden === false`: to test the hidden-host ticker, fake it with `Object.defineProperty(document, 'hidden', { get: () => true })`.
+- `tsconfig.node.json` typechecks the Node/Worker side (vite config, tools/net, server/signal); `npm run build` runs both.
+- Git repo with one commit (2026-11-05); everything since is uncommitted. Commit only when Zac asks.
+- Codex's art is not consistent: wrong-character frames, copies and frames drawn at the wrong size happen even when `PROGRESS.md` says 86/86. After every import look at `docs/art/<id>-preview.png`. Bad frames go in `SKIP` (`tools/art/import-all.mjs`), wrong sizes in `tools/art/rescale.json`, and both in `codex/REDO.md` for Codex.
+- `FighterView` tells a respawn from other invulnerability by its size (2000 ms): keep ledge-grab / ultimate invulnerability below 1500 ms or change that check.

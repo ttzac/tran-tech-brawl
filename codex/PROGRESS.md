@@ -2,29 +2,27 @@
 
 | Group | Gate | Sheets | Tier 1 | All |
 |---|---|---|---|---|
-| heroes/zac | approved | 2/2 | 24/24 | 26/86 |
-| heroes/chain | approved | 2/2 | 24/24 | 26/86 |
-| heroes/aiden | WAITING FOR APPROVAL | 2/2 | 0/24 | 2/86 |
-| heroes/david | approved | 2/2 | 13/24 | 15/86 |
-| heroes/annemaree | WAITING FOR APPROVAL | 2/2 | 0/24 | 2/86 |
-| heroes/bec | WAITING FOR APPROVAL | 2/2 | 0/24 | 2/86 |
-| heroes/caleb | WAITING FOR APPROVAL | 2/2 | 0/24 | 2/86 |
-| heroes/cameron | WAITING FOR APPROVAL | 2/2 | 0/24 | 2/86 |
-| heroes/jared | WAITING FOR APPROVAL | 2/2 | 0/24 | 2/86 |
-| heroes/lachlan | WAITING FOR APPROVAL | 2/2 | 0/24 | 2/86 |
-| heroes/ryan | WAITING FOR APPROVAL | 2/2 | 0/24 | 2/86 |
-| bosses/altwave | WAITING FOR APPROVAL | 1/1 | 0/20 | 1/43 |
-| bosses/muskbot | WAITING FOR APPROVAL | 1/1 | 0/20 | 1/47 |
-| minions/chatbot | WAITING FOR APPROVAL | 1/1 | 0/11 | 1/15 |
-| minions/neurobot | WAITING FOR APPROVAL | 1/1 | 0/11 | 1/15 |
-| fx/global | open | 0/0 | 9/36 | 9/87 |
-| stages/serverroom | open | 0/0 | 0/4 | 0/9 |
-| stages/rooftop | open | 0/0 | 0/4 | 0/7 |
-| items/icons | open | 0/0 | 0/24 | 0/24 |
-| ui/ui | open | 0/0 | 0/6 | 0/14 |
-| stages/promptfactory | open | 0/0 | 0/0 | 0/7 |
-| stages/ramvault | open | 0/0 | 0/0 | 0/7 |
+| heroes/zac | approved | 2/2 | 24/24 | 86/86 |
+| heroes/chain | approved | 2/2 | 24/24 | 86/86 |
+| heroes/aiden | approved | 2/2 | 24/24 | 86/86 |
+| heroes/david | approved | 2/2 | 24/24 | 86/86 |
+| heroes/annemaree | approved | 2/2 | 24/24 | 86/86 |
+| heroes/bec | approved | 2/2 | 24/24 | 86/86 |
+| heroes/caleb | approved | 2/2 | 24/24 | 86/86 |
+| heroes/cameron | approved | 2/2 | 24/24 | 86/86 |
+| heroes/jared | approved | 2/2 | 24/24 | 86/86 |
+| heroes/lachlan | approved | 2/2 | 24/24 | 86/86 |
+| heroes/ryan | approved | 2/2 | 24/24 | 86/86 |
+| bosses/altwave | approved | 1/1 | 20/20 | 43/43 |
+| bosses/muskbot | approved | 1/1 | 20/20 | 47/47 |
+| minions/chatbot | approved | 1/1 | 11/11 | 15/15 |
+| minions/neurobot | approved | 1/1 | 11/11 | 15/15 |
+| fx/global | open | 0/0 | 36/36 | 87/87 |
+| stages/serverroom | open | 0/0 | 4/4 | 9/9 |
+| stages/rooftop | open | 0/0 | 4/4 | 7/7 |
+| items/icons | open | 0/0 | 24/24 | 24/24 |
+| ui/ui | open | 0/0 | 6/6 | 14/14 |
+| stages/promptfactory | open | 0/0 | 0/0 | 7/7 |
+| stages/ramvault | open | 0/0 | 0/0 | 7/7 |
 
-Queue left: 298 images available now. Validator problems to redo: 0.
-
-Waiting for the user to approve the design sheets of: heroes/aiden, heroes/annemaree, heroes/bec, heroes/caleb, heroes/cameron, heroes/jared, heroes/lachlan, heroes/ryan, bosses/altwave, bosses/muskbot, minions/chatbot, minions/neurobot
+Queue left: 0 images available now. Validator problems to redo: 137.

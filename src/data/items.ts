@@ -103,21 +103,29 @@ export function applyLoadout(def: FighterDef, l: Loadout): FighterDef {
   const out: FighterDef = { ...def, melee: { ...def.melee }, special: { ...def.special } };
   const weapon = findItem('weapon', l.weapon);
   if (weapon?.melee) out.melee = { ...out.melee, ...weapon.melee };
-  for (const it of [findItem('item', l.item), findItem('powerup', l.powerup)]) {
-    const m = it?.mods;
-    if (!m) continue;
-    out.speed *= m.speed ?? 1;
-    out.jumpVelocity *= m.jumpVelocity ?? 1;
-    out.weight *= m.weight ?? 1;
-    out.jumps += m.jumps ?? 0;
-    out.melee.damage *= m.meleeDamage ?? 1;
-    out.melee.knockback *= m.meleeKnockback ?? 1;
-    out.melee.range *= m.meleeRange ?? 1;
-    out.melee.cooldown *= m.meleeCooldown ?? 1;
-    out.special.damage *= m.specialDamage ?? 1;
-    out.special.knockback *= m.specialKnockback ?? 1;
-    out.special.cooldown *= m.specialCooldown ?? 1;
-    out.special.size *= m.specialSize ?? 1;
-  }
+  for (const it of [findItem('item', l.item), findItem('powerup', l.powerup)]) if (it?.mods) mulMods(out, it.mods);
+  return out;
+}
+
+/** Multiplies a (fresh, already cloned) FighterDef by a Mods block in place. Shared by gear, dungeon relics. */
+export function mulMods(out: FighterDef, m: Mods): void {
+  out.speed *= m.speed ?? 1;
+  out.jumpVelocity *= m.jumpVelocity ?? 1;
+  out.weight *= m.weight ?? 1;
+  out.jumps += m.jumps ?? 0;
+  out.melee.damage *= m.meleeDamage ?? 1;
+  out.melee.knockback *= m.meleeKnockback ?? 1;
+  out.melee.range *= m.meleeRange ?? 1;
+  out.melee.cooldown *= m.meleeCooldown ?? 1;
+  out.special.damage *= m.specialDamage ?? 1;
+  out.special.knockback *= m.specialKnockback ?? 1;
+  out.special.cooldown *= m.specialCooldown ?? 1;
+  out.special.size *= m.specialSize ?? 1;
+}
+
+/** Returns a new FighterDef with extra Mods applied (dungeon relics). */
+export function applyMods(def: FighterDef, mods: Mods[]): FighterDef {
+  const out: FighterDef = { ...def, melee: { ...def.melee }, special: { ...def.special } };
+  for (const m of mods) mulMods(out, m);
   return out;
 }

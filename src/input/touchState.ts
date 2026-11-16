@@ -8,6 +8,7 @@ export const touchState = {
   jump: false,
   attack: false,
   special: false,
+  ultimate: false,
 };
 
 export function resetTouchState(): void {
@@ -16,6 +17,7 @@ export function resetTouchState(): void {
   touchState.jump = false;
   touchState.attack = false;
   touchState.special = false;
+  touchState.ultimate = false;
 }
 
 export function isTouchDevice(): boolean {

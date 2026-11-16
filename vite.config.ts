@@ -1,8 +1,10 @@
 import { defineConfig } from 'vite';
+import { signalPlugin } from './tools/net/viteSignal.ts';
 
 // Phaser's arcade-only build drops Matter.js etc. (we only use Arcade physics),
 // which keeps the shipped bundle noticeably smaller. Types still come from "phaser".
 export default defineConfig({
+  plugins: [signalPlugin()], // dev-only multiplayer signalling at ws://<dev server>/signal
   resolve: {
     alias: { phaser: 'phaser/dist/phaser-arcade-physics.min.js' },
   },

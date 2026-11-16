@@ -1,5 +1,5 @@
-import Phaser from 'phaser';
 import type { WaveDef } from '../data/types';
+import type { Rng } from '../sim/rng';
 
 /** Drops waves of minions into the fight on a timer, capped at a max alive.
  *  A wave is spread over evenly spaced slots (with jitter, randomly shuffled) so minions do not land in one clump. */
@@ -12,6 +12,7 @@ export class Spawner {
     private spawn: (x: number) => void,
     private aliveCount: () => number,
     private xRange: [number, number],
+    private rng: Rng,
   ) {
     this.timer = cfg.firstDelay;
   }
@@ -25,10 +26,10 @@ export class Spawner {
     this.wave++;
     const [lo, hi] = this.xRange;
     const slot = (hi - lo) / n;
-    const offset = Phaser.Math.Between(0, n - 1); // rotate which slot is first so side order varies
+    const offset = this.rng.int(0, n - 1); // rotate which slot is first so side order varies
     for (let i = 0; i < n; i++) {
       const s = (i + offset) % n;
-      this.spawn(Math.round(lo + slot * (s + 0.15 + Math.random() * 0.7)));
+      this.spawn(Math.round(lo + slot * (s + 0.15 + this.rng.next() * 0.7)));
     }
   }
 }

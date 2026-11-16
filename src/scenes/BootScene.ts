@@ -1,11 +1,9 @@
 import Phaser from 'phaser';
+import { fitUi } from '../ui/hires';
 import { heroes } from '../data/heroes';
 import { bosses } from '../data/bosses';
-import { ART, FX, PORTRAITS, STAGE_IMAGES } from '../data/art';
+import { ART, FX, ITEM_ICONS, PORTRAITS, PORTRAIT_MOODS, STAGE_IMAGES, TEX_W, TEX_H, UI_IMAGES } from '../data/art';
 import type { FighterDef } from '../data/types';
-
-export const TEX_W = 28;
-export const TEX_H = 44;
 
 /** No art files needed yet: every sprite is drawn procedurally here. Drop real PNGs in
  *  public/assets/sprites and load them here when you have art. */
@@ -15,11 +13,18 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
+    fitUi(this);
     this.showProgress();
     for (const [k, v] of Object.entries(FX)) this.load.spritesheet(`fx_${k}`, `assets/fx/${k}.png`, { frameWidth: v.w, frameHeight: v.h });
     for (const k of STAGE_IMAGES) this.load.image(`stage_${k}`, `assets/stages/${k}.png`);
     for (const id of PORTRAITS) this.load.image(`portrait_${id}`, `assets/portraits/${id}.png`);
-    for (const id of Object.keys(ART)) this.load.aseprite(id, `assets/sprites/${id}.png`, `assets/sprites/${id}.json`);
+    for (const id of PORTRAITS) {
+      for (const m of PORTRAIT_MOODS) this.load.image(`portrait_${id}_${m}`, `assets/portraits/${id}_${m}.png`);
+      this.load.image(`keyart_${id}`, `assets/keyart/${id}.png`);
+    }
+    for (const k of ITEM_ICONS) this.load.image(`icon_${k}`, `assets/items/${k}.png`);
+    for (const k of UI_IMAGES) this.load.image(`ui_${k}`, `assets/ui/${k}.png`);
+    for (const id of Object.keys(ART)) this.load.aseprite(id, `assets/sprites/${id}.webp`, `assets/sprites/${id}.json`);
   }
 
   /** Simple loading bar; removes itself when the loader finishes. */
@@ -46,7 +51,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
-    for (const k of Object.keys(FX)) this.anims.create({ key: `fx_${k}`, frames: this.anims.generateFrameNumbers(`fx_${k}`), frameRate: 16, repeat: 0 });
+    for (const [k, v] of Object.entries(FX)) this.anims.create({ key: `fx_${k}`, frames: this.anims.generateFrameNumbers(`fx_${k}`), frameRate: v.rate ?? 16, repeat: v.loop ? -1 : 0 });
     const defs: FighterDef[] = [...heroes, ...bosses.flatMap((b) => [b.fighter, b.minion])];
     // Phaser creates Aseprite tags as one-shot animations; loop the cyclic ones.
     for (const id of Object.keys(ART)) {
@@ -61,7 +66,7 @@ export class BootScene extends Phaser.Scene {
     g.generateTexture('proj', 16, 16);
     g.destroy();
 
-    this.scene.start('Menu');
+    this.scene.start('Title');
   }
 
   /** Crescent swing arc facing right (tinted per hero in Combat). */
